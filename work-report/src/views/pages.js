@@ -96,8 +96,8 @@ export function tasksPage({ tasks, editing, archived, msg }) {
       ${optionalSelect('업무 유형', 'work_type', f.work_type, WORK_TYPES)}
       ${field('진행 상태', 'status', f.status, { options: STATUSES })}
       ${field('우선순위', 'priority', f.priority, { options: PRIORITIES })}
-      ${field('진행률 (%) · 비우면 진행률 바에서 빠집니다', 'progress', f.progress, { type: 'number', min: 0, max: 100 })}
-      ${field('마감 시한 · 비우면 D-day를 표시하지 않습니다', 'deadline', f.deadline, { type: 'date' })}
+      ${field('진행률 (%)', 'progress', f.progress, { type: 'number', min: 0, max: 100 })}
+      ${field('마감 시한', 'deadline', f.deadline, { type: 'date' })}
     </div>
     <label class="row" style="margin:4px 0 12px;font-size:13px">
       <input type="checkbox" name="is_misc" value="1"${f.is_misc ? ' checked' : ''} style="width:auto">

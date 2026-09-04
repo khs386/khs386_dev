@@ -114,7 +114,8 @@ nav.top .right{margin-left:auto}
 .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
   gap:12px; margin-bottom:14px}
 .fld{display:flex; flex-direction:column; gap:5px}
-.fld label{font-size:12px; color:var(--text-3); letter-spacing:0}
+.fld label{font-size:12px; color:var(--text-3); letter-spacing:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 
 /* 버튼 */
 .btn{padding:8px 16px; border:0; border-radius:9px; background:var(--accent); color:#fff;
