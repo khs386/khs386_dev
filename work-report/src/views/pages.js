@@ -146,7 +146,10 @@ ${archived ? '' : form}
 
 /* ── 일일 기록 ──────────────────────────────────────────── */
 
-export function dailyPage({ date, logs, available, hasTasks, skip, msg }) {
+const savedMark = (on) =>
+  on ? '<span class="pill" style="background:var(--done)">✓ 저장했습니다</span>' : ''
+
+export function dailyPage({ date, logs, available, hasTasks, skip, msg, saved }) {
   const body = `
 <div class="head">
   <div><h1>일일 기록</h1><p>${koreanDate(date)} 에 진행한 업무와 세부내용을 적습니다.</p></div>
@@ -180,8 +183,9 @@ ${
   logs.length
     ? logs.map((l, i) => {
         const d = dday(l.deadline, date)
-        return `<div class="card">
+        return `<div class="card" id="log-${l.id}">
   <div class="chead"><h2>${esc(l.title)}</h2><div class="row">
+    ${savedMark(saved === l.id)}
     ${d === null ? '' : ddayTag(d)}
     <form method="post" action="/daily/${l.id}/move" class="inline">
       <input type="hidden" name="date" value="${date}"><input type="hidden" name="dir" value="-1">
@@ -221,7 +225,7 @@ ${
 
 /* ── 주간 현황 ──────────────────────────────────────────── */
 
-export function weeklyPage({ date, weekStart, items, tasks, msg }) {
+export function weeklyPage({ date, weekStart, items, tasks, msg, saved }) {
   const byKind = (k) => items.filter((i) => i.kind === k)
 
   const addForm = (kind) => `
@@ -243,12 +247,12 @@ export function weeklyPage({ date, weekStart, items, tasks, msg }) {
 
   const itemCard = (it, kind) => {
     const d = dday(it.due_date, date)
-    return `<div class="card">
+    return `<div class="card" id="item-${it.id}">
   <form method="post" action="/weekly/${it.id}/save">
     <input type="hidden" name="date" value="${date}">
     <div class="chead">
       <input name="title" value="${esc(it.title)}" style="max-width:360px;font-weight:600">
-      <div class="row">${d === null ? '' : ddayTag(d)}</div>
+      <div class="row">${savedMark(saved === it.id)}${d === null ? '' : ddayTag(d)}</div>
     </div>
     <div class="grid">
       ${optionalSelect('업무 유형', 'work_type', it.work_type, WORK_TYPES)}

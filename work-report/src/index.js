@@ -144,6 +144,7 @@ app.get('/daily', async (c) => {
     hasTasks: tasks.length > 0,
     skip: skipReason(date, settings.holidays),
     msg: c.req.query('msg'),
+    saved: c.req.query('saved'),
   }))
 })
 
@@ -178,7 +179,8 @@ app.post('/daily/:id/save', async (c) => {
     deadline: form.get('deadline'),
     is_misc: form.get('is_misc') === '1',
   })
-  return back(c, `/daily?date=${date}`, '저장했습니다.')
+  const id = c.req.param('id')
+  return c.redirect(`/daily?date=${date}&saved=${id}#log-${id}`)
 })
 
 app.post('/daily/:id/delete', async (c) => {
@@ -202,7 +204,10 @@ app.get('/weekly', async (c) => {
     db.listWeekly(c.env.DB, ws),
     db.listTasks(c.env.DB),
   ])
-  return html(c, weeklyPage({ date, weekStart: ws, items, tasks, msg: c.req.query('msg') }))
+  return html(c, weeklyPage({
+    date, weekStart: ws, items, tasks,
+    msg: c.req.query('msg'), saved: c.req.query('saved'),
+  }))
 })
 
 app.post('/weekly/add', async (c) => {
@@ -248,7 +253,8 @@ app.post('/weekly/:id/save', async (c) => {
     note: form.get('note'),
     output: form.get('output'),
   })
-  return back(c, `/weekly?date=${date}`, '저장했습니다.')
+  const id = c.req.param('id')
+  return c.redirect(`/weekly?date=${date}&saved=${id}#item-${id}`)
 })
 
 app.post('/weekly/:id/delete', async (c) => {
