@@ -241,18 +241,13 @@ export function field(label, name, value, opts = {}) {
   return `<div class="fld"><label>${esc(label)}</label>${input}</div>`
 }
 
-/**
- * 비워 둘 수 있는 선택 상자.
- * 지금 값이 목록에 없으면(예: 나중에 지워진 시리즈) 그 값도 함께 넣어 준다.
- * 그러지 않으면 저장할 때 값이 조용히 지워진다.
- */
+/** 비워 둘 수 있는 선택 상자. 목록에 있는 것만 고를 수 있다. */
 export function optionalSelect(label, name, value, options) {
   const v = value || ''
-  const list = v && !options.includes(v) ? [...options, v] : options
   return (
     `<div class="fld"><label>${esc(label)}</label><select name="${name}">` +
     `<option value=""${v === '' ? ' selected' : ''}>선택 안 함</option>` +
-    list.map((o) => `<option${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('') +
+    options.map((o) => `<option${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('') +
     `</select></div>`
   )
 }
