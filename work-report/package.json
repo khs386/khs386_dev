@@ -1,18 +1,19 @@
 {
   "name": "work-report",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute work-report --remote --file=./migrations/0001_init.sql",
+    "db:init:local": "wrangler d1 execute work-report --local --file=./migrations/0001_init.sql",
     "test": "node --test \"test/**/*.test.mjs\""
   },
   "dependencies": {
-    "next": "^14.2.0",
-    "react": "^18.3.0",
-    "react-dom": "^18.3.0",
-    "@supabase/supabase-js": "^2.45.0"
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
   }
 }

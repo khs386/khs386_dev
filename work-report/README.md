@@ -1,18 +1,21 @@
 # 📋 업무보고서 — 일일 · 주간 통합 앱
 
 노션을 읽어 보고서를 만들던 두 스킬(`daily-work-report-sungwoobook`, `weekly-work-report`)을
-하나의 웹앱으로 옮긴 것입니다. 업무 데이터를 앱이 직접 갖고 있어 조회 단계에서 생기던
+하나의 웹앱으로 옮긴 것입니다. 업무 데이터를 앱이 직접 갖고 있어, 조회 단계에서 생기던
 누락·타임존 오차·formula 값 판독 실패가 없습니다.
 
-결과물은 기존 보고서와 **바이트 단위로 같습니다**. `test/golden/` 의 실제 결과물 2건을
-기준으로 삼아 자동 검증합니다.
+Cloudflare Workers 하나에 다 들어 있습니다. 화면도, 데이터베이스(D1)도, 정해진 시각의
+자동 실행(Cron Triggers)도 같은 계정 안에서 돌아갑니다.
+
+결과물은 기존 보고서와 **바이트 단위로 같습니다.** `test/golden/`의 실제 결과물 2건을
+기준으로 자동 검증합니다.
 
 ## 무엇을 하는가
 
 - 단위 업무를 등록하고 상태·진행률·마감을 관리합니다.
 - 하루치 진행 내역을 적으면 **일일 업무 보고서** HTML을 만듭니다.
 - 주차별 전주 실적·금주 예정을 채우면 **주간업무 보고서** HTML을 만듭니다.
-- 만든 보고서를 **구글 드라이브 지정 폴더**에 저장합니다. 같은 이름이 있으면 덮어씁니다.
+- 만든 보고서를 **구글 드라이브 지정 폴더**에 저장합니다. 같은 이름이면 덮어씁니다.
 - 평일 18시(일일)·금요일 17시(주간)에 자동 생성합니다. 주말과 공휴일은 건너뜁니다.
 
 ## 화면
@@ -26,60 +29,92 @@
 | `/series` | 시리즈 3종 총 진행률 직접 입력 |
 | `/reports` | 보고서 생성, 미리보기, 드라이브 저장, 내려받기, 이력 |
 
-## 설정
+`docs/mockup.html`을 브라우저로 열면 화면 여섯 개를 표본 데이터로 미리 볼 수 있습니다.
 
-### 1. Supabase (morning-brief와 별도 프로젝트)
+## 설치
 
-1. [supabase.com](https://supabase.com)에서 **새 프로젝트**를 만듭니다.
-2. SQL Editor에 `schema.sql` 전체를 붙여넣고 실행합니다.
-3. Settings → API에서 URL, anon key, service_role key를 복사합니다.
-4. 혼자 쓰는 앱이므로 Authentication → Providers → Email에서 계정을 하나 만든 뒤
-   신규 가입(Sign up)을 꺼 두는 것을 권장합니다.
-
-### 2. 구글 드라이브 저장
-
-1. Google Cloud 콘솔에서 프로젝트를 만들고 **Google Drive API**를 켭니다.
-2. **서비스 계정**을 만들고 JSON 키를 내려받습니다.
-3. 드라이브에서 보고서를 저장할 폴더를 열고, 서비스 계정 이메일
-   (`...@....iam.gserviceaccount.com`)을 **편집자**로 공유합니다.
-4. 폴더 URL의 `folders/` 뒤 문자열이 `GOOGLE_DRIVE_FOLDER_ID` 입니다.
-5. JSON 키의 `client_email`과 `private_key`를 환경변수에 넣습니다.
-   `private_key`는 줄바꿈이 `\n` 으로 들어간 형태 그대로 큰따옴표로 감싸면 됩니다.
-
-> 서비스 계정은 자기 소유의 드라이브 용량이 없어서, 반드시 **사용자 폴더를 공유**해야
-> 그 폴더 안에 파일을 만들 수 있습니다. 공유 드라이브(팀 드라이브)를 쓸 때만
-> `GOOGLE_DRIVE_ID`를 함께 넣습니다.
-
-### 3. 로컬 실행
+### 1. 준비
 
 ```bash
 cd work-report
-cp .env.local.example .env.local   # 값 채우기
 npm install
-npm test                           # 결과물이 기존과 같은지 검증
-npm run dev                        # http://localhost:3000
+npx wrangler login      # 브라우저가 열리고 계정 승인
 ```
 
-### 4. Vercel 배포
+### 2. 데이터베이스 만들기
 
-1. 이 저장소를 Vercel에서 import 합니다.
-2. **Root Directory를 `work-report`로 지정**합니다.
-3. 환경변수를 `.env.local.example` 대로 등록합니다.
-4. `vercel.json`의 cron이 자동 등록됩니다.
-   Vercel 서버는 UTC로 돌기 때문에 KST 기준 시각에서 9시간을 뺀 값이 들어 있습니다.
-   - 일일: `0 9 * * *` → 매일 18:00 KST (주말·공휴일은 코드가 건너뜁니다)
-   - 주간: `0 8 * * 5` → 금요일 17:00 KST
+```bash
+npx wrangler d1 create work-report
+```
 
-Hobby 플랜은 **cron 하나가 하루 한 번까지** 도는 제한이 있습니다. 위 두 일정은 각각
-하루 1회·주 1회라서 무료 요금제로 둘 다 동작합니다. 다만 Hobby에서는 지정한 **시(hour)
-안의 아무 때나** 실행되므로, 18:00이 아니라 18:40에 만들어질 수 있습니다.
+출력에 나오는 `database_id`를 `wrangler.toml`의 같은 자리에 붙여넣습니다. 그런 다음 표를 만듭니다.
 
-주말 판정을 cron 식(`* * 1-5`)에 맡기지 않고 코드에서 하는 이유가 있습니다. Hobby의
-"하루 한 번" 검사에 걸리지 않는 가장 단순한 식을 쓰면서, 공휴일까지 같은 자리에서
-처리하기 위해서입니다. 공휴일 목록은 `settings` 표에 있어 앱에서 고칠 수 있습니다.
+```bash
+npm run db:init          # 원격(실제로 쓰는 곳)
+npm run db:init:local    # 로컬 개발용 — 필요할 때만
+```
 
-분 단위로 정확한 시각이 필요하면 GitHub Actions에서 `/api/cron/daily`·`/api/cron/weekly`를
-호출하세요. 두 경로 모두 `CRON_SECRET`을 `Authorization: Bearer <값>` 으로 확인합니다.
+### 3. 비밀값 넣기
+
+`wrangler secret put`으로 하나씩 넣습니다. 실행하면 값을 물어봅니다.
+
+```bash
+npx wrangler secret put APP_PASSWORD      # 앱에 로그인할 비밀번호
+npx wrangler secret put SESSION_SECRET    # 쿠키 서명용 임의 문자열 (길수록 좋음)
+```
+
+구글 드라이브에 저장하려면 아래 셋도 넣습니다. 준비 방법은 다음 절에 있습니다.
+
+```bash
+npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_EMAIL
+npx wrangler secret put GOOGLE_PRIVATE_KEY
+npx wrangler secret put GOOGLE_DRIVE_FOLDER_ID
+```
+
+작성자 표기는 비밀값이 아니라 `wrangler.toml`의 `[vars]`에 있습니다. 이름이 바뀌면 거기서 고칩니다.
+
+### 4. 구글 드라이브 준비
+
+1. 드라이브에서 보고서를 담을 폴더를 만듭니다. 주소의 `folders/` 뒤가 **폴더 ID**입니다.
+2. [Google Cloud 콘솔](https://console.cloud.google.com)에서 프로젝트를 만들고 **Google Drive API**를 켭니다.
+3. **서비스 계정**을 만들고 JSON 키를 내려받습니다. 역할(Role)은 지정하지 않아도 됩니다.
+4. JSON의 `client_email`과 `private_key`를 위 secret에 넣습니다.
+   `private_key`는 `-----BEGIN PRIVATE KEY-----`부터 끝까지 통째로, 바깥 큰따옴표는 빼고 넣습니다.
+5. **1번 폴더를 `client_email` 주소에 '편집자'로 공유합니다.**
+
+> 5번을 빠뜨리면 업로드가 실패합니다. 서비스 계정은 자기 저장 공간이 없어서,
+> 사람이 폴더를 빌려줘야만 그 안에 파일을 만들 수 있습니다.
+> `File not found` 오류가 나면 대개 여기입니다.
+
+### 5. 배포
+
+```bash
+npm run deploy
+```
+
+`https://work-report.<계정>.workers.dev` 주소가 나옵니다. 들어가서 `APP_PASSWORD`로 로그인합니다.
+
+### 로컬에서 확인하려면
+
+`.dev.vars` 파일에 값을 적어 두면 `npm run dev`로 띄울 수 있습니다. 이 파일은 커밋되지 않습니다.
+
+```
+APP_PASSWORD=아무거나
+SESSION_SECRET=아무거나
+```
+
+## 자동 생성
+
+`wrangler.toml`의 `[triggers]`에 들어 있어서 배포하면 함께 등록됩니다.
+
+- `0 9 * * *` → 매일 18:00 KST · 일일 보고서
+- `0 8 * * 5` → 금요일 17:00 KST · 주간 보고서
+
+시각은 UTC 기준이라 한국 시각에서 9시간을 뺀 값입니다. 주말과 공휴일은 코드가 판단해
+건너뜁니다. 공휴일 목록은 `settings` 표에 있습니다.
+
+어느 보고서를 만들지는 실행된 시각으로 가릅니다. UTC 8시는 주간, 그 밖은 일일입니다.
+실행 기록은 `npx wrangler tail`로 볼 수 있습니다.
 
 ## 결과물이 달라지지 않게 하는 장치
 
@@ -87,12 +122,11 @@ Hobby 플랜은 **cron 하나가 하루 한 번까지** 도는 제한이 있습�
 
 1. **골든 테스트** — 고정 입력을 넣으면 `test/golden/`의 실제 결과물과
    한 글자도 다르지 않은 HTML이 나오는지 봅니다.
-2. **파이프라인 테스트** — 실제 테이블과 같은 모양의 행을 가짜 Supabase에 넣고,
-   DB에서 HTML까지 이어지는 경로가 같은 결과물을 내는지 봅니다.
-   입력 순서를 뒤섞어도 정렬 규칙이 같은 결과를 만드는지도 함께 봅니다.
+2. **배선 테스트** — 실제 D1 표와 같은 모양의 행을 가짜 데이터베이스에 넣고,
+   행에서 HTML까지 이어지는 경로가 같은 결과물을 내는지 봅니다.
 
-색상 구간, 정렬 순서, 집계에서 빼는 항목처럼 눈으로 놓치기 쉬운 규칙도
-개별 테스트로 고정해 두었습니다. 렌더링을 손볼 일이 생기면 이 테스트가 먼저 알려 줍니다.
+색상 구간, 정렬 순서, 집계에서 빼는 항목처럼 눈으로 놓치기 쉬운 규칙도 개별 테스트로
+고정해 두었습니다. 렌더링을 손볼 일이 생기면 이 테스트가 먼저 알려 줍니다.
 
 ### 일일 보고서에만 씌우는 문서 껍데기
 
@@ -116,13 +150,18 @@ Hobby 플랜은 **cron 하나가 하루 한 번까지** 도는 제한이 있습�
 - 전주 실적은 완료·종결을 먼저, 그다음 D-day 오름차순, 같으면 시리즈 순서로 놓습니다.
 - 주차 표기는 `(일 - 1) // 7 + 1` 로 계산합니다.
 
-## 화면 목업
+## 구성
 
-`docs/mockup.html`을 브라우저로 열면 화면 여섯 개를 표본 데이터로 미리 볼 수 있습니다.
-내비게이션을 눌러 화면을 넘길 수 있고, 보고서 화면의 미리보기에는 실제 결과물이 들어 있습니다.
-
-## 노션과의 관계
-
-이 앱을 쓰기 시작하면 노션은 더 읽지 않습니다. 기존 데이터를 옮기려면
-노션에서 내보낸 뒤 `/tasks`와 `/weekly`에 직접 넣으면 됩니다.
-시리즈 총 진행률은 노션 화면의 숫자를 `/series`에 그대로 입력합니다.
+```
+src/
+  index.js          라우터 · 자동 실행 진입점
+  lib/
+    report/         보고서 렌더러 — 의존성 없는 순수 함수, 손대지 않음
+    db.js           D1 접근
+    reports.js      DB 행 → 렌더러 입력 → 저장
+    auth.js         비밀번호 + 서명 쿠키
+    drive.js        구글 드라이브 업로드 (WebCrypto로 JWT 서명)
+  views/            화면 HTML
+migrations/         D1 스키마
+test/               골든 파일과 테스트
+```

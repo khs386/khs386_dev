@@ -1,0 +1,400 @@
+// 업무보고서 — Cloudflare Workers 진입점.
+// 화면(GET)과 폼 처리(POST)를 모두 이 워커가 맡고, 정해진 시각에 스스로 깨어나 보고서를 만든다.
+import { Hono } from 'hono'
+import * as db from './lib/db.js'
+import { isLoggedIn, makeSessionCookie, clearSessionCookie, checkPassword } from './lib/auth.js'
+import { driveConfigured, uploadHtml } from './lib/drive.js'
+import {
+  todayKST, skipReason, generateReport, filenameFor,
+} from './lib/reports.js'
+import { weekStart, dday } from './lib/report/format.js'
+import { loginPage } from './views/layout.js'
+import {
+  todayPage, tasksPage, dailyPage, weeklyPage, seriesPage, reportsPage,
+} from './views/pages.js'
+
+const app = new Hono()
+
+const html = (c, body) => c.html(body)
+/** 처리 후 같은 화면으로 되돌린다. 새로고침해도 같은 요청이 되풀이되지 않는다. */
+const back = (c, path, msg) =>
+  c.redirect(path + (msg ? (path.includes('?') ? '&' : '?') + 'msg=' + encodeURIComponent(msg) : ''))
+
+const dateOr = (v, fallback) => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : fallback)
+
+/* ── 로그인 ─────────────────────────────────────────────── */
+
+app.get('/login', (c) => html(c, loginPage(c.req.query('e'))))
+
+app.post('/login', async (c) => {
+  const form = await c.req.formData()
+  if (!c.env.APP_PASSWORD || !c.env.SESSION_SECRET) {
+    return html(c, loginPage('APP_PASSWORD와 SESSION_SECRET이 설정되지 않았습니다.'))
+  }
+  if (!checkPassword(c.env, form.get('password'))) {
+    return html(c, loginPage('비밀번호가 맞지 않습니다.'))
+  }
+  c.header('Set-Cookie', await makeSessionCookie(c.env))
+  return c.redirect('/')
+})
+
+app.post('/logout', (c) => {
+  c.header('Set-Cookie', clearSessionCookie())
+  return c.redirect('/login')
+})
+
+// 로그인 화면 말고는 전부 확인한다.
+app.use('*', async (c, next) => {
+  if (c.req.path === '/login') return next()
+  if (!(await isLoggedIn(c.req.raw, c.env))) return c.redirect('/login')
+  await next()
+})
+
+/* ── 오늘 ───────────────────────────────────────────────── */
+
+app.get('/', async (c) => {
+  const today = todayKST()
+  const [logs, weekly, series, tasks, settings] = await Promise.all([
+    db.listLogs(c.env.DB, today),
+    db.listWeekly(c.env.DB, weekStart(today)),
+    db.listSeries(c.env.DB),
+    db.listTasks(c.env.DB),
+    db.getSettings(c.env.DB),
+  ])
+  const soon = tasks.filter((t) => t.deadline).slice(0, 5)
+  return html(c, todayPage({
+    today, logs, series, soon,
+    weekly: {
+      prev: weekly.filter((w) => w.kind === '전주 실적').length,
+      plan: weekly.filter((w) => w.kind === '금주 예정').length,
+    },
+    skip: skipReason(today, settings.holidays),
+    msg: c.req.query('msg'),
+  }))
+})
+
+/* ── 업무 ───────────────────────────────────────────────── */
+
+function taskForm(form) {
+  return {
+    title: form.get('title') || '',
+    series: form.get('series') || '',
+    work_type: form.get('work_type') || '',
+    priority: form.get('priority') || '중간',
+    status: form.get('status') || '진행',
+    progress: form.get('progress'),
+    deadline: form.get('deadline'),
+    is_misc: form.get('is_misc') === '1',
+  }
+}
+
+app.get('/tasks', async (c) => {
+  const archived = c.req.query('archived') === '1'
+  const tasks = await db.listTasks(c.env.DB, { archived })
+  const editId = c.req.query('edit')
+  return html(c, tasksPage({
+    tasks, archived,
+    editing: editId ? await db.getTask(c.env.DB, editId) : null,
+    msg: c.req.query('msg'),
+  }))
+})
+
+app.post('/tasks/new', async (c) => {
+  const f = taskForm(await c.req.formData())
+  if (!f.title.trim()) return back(c, '/tasks', '업무명을 입력해 주세요.')
+  await db.createTask(c.env.DB, f)
+  return back(c, '/tasks', '추가했습니다.')
+})
+
+app.post('/tasks/:id/save', async (c) => {
+  await db.updateTask(c.env.DB, c.req.param('id'), taskForm(await c.req.formData()))
+  return back(c, '/tasks', '수정했습니다.')
+})
+
+app.post('/tasks/:id/archive', async (c) => {
+  const form = await c.req.formData()
+  await db.setTaskArchived(c.env.DB, c.req.param('id'), form.get('archived') === '1')
+  return back(c, '/tasks', '옮겼습니다.')
+})
+
+app.post('/tasks/:id/delete', async (c) => {
+  await db.deleteTask(c.env.DB, c.req.param('id'))
+  return back(c, '/tasks', '삭제했습니다.')
+})
+
+/* ── 일일 기록 ──────────────────────────────────────────── */
+
+app.get('/daily', async (c) => {
+  const date = dateOr(c.req.query('date'), todayKST())
+  const [logs, tasks, settings] = await Promise.all([
+    db.listLogs(c.env.DB, date),
+    db.listTasks(c.env.DB),
+    db.getSettings(c.env.DB),
+  ])
+  const used = new Set(logs.map((l) => l.task_id).filter(Boolean))
+  return html(c, dailyPage({
+    date, logs,
+    available: tasks.filter((t) => !used.has(t.id)),
+    hasTasks: tasks.length > 0,
+    skip: skipReason(date, settings.holidays),
+    msg: c.req.query('msg'),
+  }))
+})
+
+app.post('/daily/add', async (c) => {
+  const form = await c.req.formData()
+  const date = dateOr(form.get('date'), todayKST())
+  const task = await db.getTask(c.env.DB, form.get('task_id'))
+  if (!task) return back(c, `/daily?date=${date}`, '업무를 고르지 않았습니다.')
+  const logs = await db.listLogs(c.env.DB, date)
+  await db.addLogFromTask(c.env.DB, date, task, logs.length)
+  return back(c, `/daily?date=${date}`, `"${task.title}"을(를) 넣었습니다.`)
+})
+
+app.post('/daily/add-free', async (c) => {
+  const form = await c.req.formData()
+  const date = dateOr(form.get('date'), todayKST())
+  const title = (form.get('title') || '').trim()
+  if (!title) return back(c, `/daily?date=${date}`, '업무명을 입력해 주세요.')
+  const logs = await db.listLogs(c.env.DB, date)
+  await db.addLogFree(c.env.DB, date, title, logs.length)
+  return back(c, `/daily?date=${date}`, `"${title}"을(를) 넣었습니다.`)
+})
+
+app.post('/daily/:id/save', async (c) => {
+  const form = await c.req.formData()
+  const date = dateOr(form.get('date'), todayKST())
+  await db.saveLog(c.env.DB, c.req.param('id'), {
+    detail_text: form.get('detail_text') || '',
+    status: form.get('status') || '진행',
+    priority: form.get('priority') || '중간',
+    progress: form.get('progress'),
+    deadline: form.get('deadline'),
+    is_misc: form.get('is_misc') === '1',
+  })
+  return back(c, `/daily?date=${date}`, '저장했습니다.')
+})
+
+app.post('/daily/:id/delete', async (c) => {
+  const form = await c.req.formData()
+  await db.deleteLog(c.env.DB, c.req.param('id'))
+  return back(c, `/daily?date=${dateOr(form.get('date'), todayKST())}`, '뺐습니다.')
+})
+
+app.post('/daily/:id/move', async (c) => {
+  const form = await c.req.formData()
+  await db.moveLog(c.env.DB, c.req.param('id'), Number(form.get('dir')) || 1)
+  return c.redirect(`/daily?date=${dateOr(form.get('date'), todayKST())}`)
+})
+
+/* ── 주간 현황 ──────────────────────────────────────────── */
+
+app.get('/weekly', async (c) => {
+  const date = dateOr(c.req.query('date'), todayKST())
+  const ws = weekStart(date)
+  const [items, tasks] = await Promise.all([
+    db.listWeekly(c.env.DB, ws),
+    db.listTasks(c.env.DB),
+  ])
+  return html(c, weeklyPage({ date, weekStart: ws, items, tasks, msg: c.req.query('msg') }))
+})
+
+app.post('/weekly/add', async (c) => {
+  const form = await c.req.formData()
+  const date = dateOr(form.get('date'), todayKST())
+  const kind = form.get('kind')
+  const task = await db.getTask(c.env.DB, form.get('task_id'))
+  if (!task) return back(c, `/weekly?date=${date}`, '업무를 고르지 않았습니다.')
+  const items = await db.listWeekly(c.env.DB, weekStart(date))
+  await db.addWeeklyItem(c.env.DB, weekStart(date), kind, {
+    task_id: task.id, title: task.title, work_type: task.work_type,
+    status: kind === '전주 실적' ? task.status : null,
+    progress: kind === '전주 실적' ? task.progress : null,
+    due_date: task.deadline,
+  }, items.filter((i) => i.kind === kind).length)
+  return back(c, `/weekly?date=${date}`, '넣었습니다.')
+})
+
+app.post('/weekly/add-free', async (c) => {
+  const form = await c.req.formData()
+  const date = dateOr(form.get('date'), todayKST())
+  const kind = form.get('kind')
+  const title = (form.get('title') || '').trim()
+  if (!title) return back(c, `/weekly?date=${date}`, '업무명을 입력해 주세요.')
+  const items = await db.listWeekly(c.env.DB, weekStart(date))
+  await db.addWeeklyItem(c.env.DB, weekStart(date), kind, {
+    title, work_type: '꼬마시리즈 개발',
+    status: kind === '전주 실적' ? '진행' : null,
+    progress: null, due_date: null,
+  }, items.filter((i) => i.kind === kind).length)
+  return back(c, `/weekly?date=${date}`, '넣었습니다.')
+})
+
+app.post('/weekly/:id/save', async (c) => {
+  const form = await c.req.formData()
+  const date = dateOr(form.get('date'), todayKST())
+  await db.saveWeeklyItem(c.env.DB, c.req.param('id'), {
+    title: form.get('title') || '',
+    work_type: form.get('work_type'),
+    status: form.get('status'),
+    progress: form.get('progress'),
+    due_date: form.get('due_date'),
+    note: form.get('note'),
+    output: form.get('output'),
+  })
+  return back(c, `/weekly?date=${date}`, '저장했습니다.')
+})
+
+app.post('/weekly/:id/delete', async (c) => {
+  const form = await c.req.formData()
+  await db.deleteWeeklyItem(c.env.DB, c.req.param('id'))
+  return back(c, `/weekly?date=${dateOr(form.get('date'), todayKST())}`, '뺐습니다.')
+})
+
+/** 지난 주 '금주 예정'을 이번 주 '전주 실적'으로 옮겨 온다. 이미 있는 항목은 건너뛴다. */
+app.post('/weekly/carry-over', async (c) => {
+  const form = await c.req.formData()
+  const date = dateOr(form.get('date'), todayKST())
+  const ws = weekStart(date)
+  const prevWs = new Date(`${ws}T00:00:00Z`)
+  prevWs.setUTCDate(prevWs.getUTCDate() - 7)
+
+  const [lastWeek, thisWeek] = await Promise.all([
+    db.listWeekly(c.env.DB, prevWs.toISOString().slice(0, 10)),
+    db.listWeekly(c.env.DB, ws),
+  ])
+  const plans = lastWeek.filter((i) => i.kind === '금주 예정')
+  if (!plans.length) return back(c, `/weekly?date=${date}`, '지난 주 금주 예정 항목이 없습니다.')
+
+  const already = new Set(thisWeek.filter((i) => i.kind === '전주 실적').map((i) => i.title))
+  const fresh = plans.filter((p) => !already.has(p.title))
+  if (!fresh.length) return back(c, `/weekly?date=${date}`, '이미 모두 가져온 항목입니다.')
+
+  let order = thisWeek.filter((i) => i.kind === '전주 실적').length
+  for (const p of fresh) {
+    await db.addWeeklyItem(c.env.DB, ws, '전주 실적', {
+      task_id: p.task_id, title: p.title, work_type: p.work_type,
+      status: '진행', progress: p.progress, due_date: p.due_date,
+    }, order++)
+  }
+  return back(c, `/weekly?date=${date}`, `${fresh.length}건을 전주 실적으로 가져왔습니다.`)
+})
+
+/* ── 시리즈 ─────────────────────────────────────────────── */
+
+app.get('/series', async (c) =>
+  html(c, seriesPage({ series: await db.listSeries(c.env.DB), msg: c.req.query('msg') })))
+
+app.post('/series', async (c) => {
+  const form = await c.req.formData()
+  const names = form.getAll('name')
+  const values = form.getAll('progress')
+  await db.saveSeries(c.env.DB, names.map((name, i) => ({ name, progress: values[i] })))
+  return back(c, '/series', '저장했습니다.')
+})
+
+/* ── 보고서 ─────────────────────────────────────────────── */
+
+const kindOr = (v) => (v === 'weekly' ? 'weekly' : 'daily')
+
+app.get('/reports', async (c) => {
+  const kind = kindOr(c.req.query('kind'))
+  const date = dateOr(c.req.query('date'), todayKST())
+  const [report, history] = await Promise.all([
+    db.getReport(c.env.DB, kind, date),
+    db.listReports(c.env.DB),
+  ])
+  return html(c, reportsPage({
+    kind, date, report, history,
+    driveReady: driveConfigured(c.env),
+    msg: c.req.query('msg'),
+    msgKind: c.req.query('t'),
+  }))
+})
+
+app.post('/reports/generate', async (c) => {
+  const form = await c.req.formData()
+  const kind = kindOr(form.get('kind'))
+  const date = dateOr(form.get('date'), todayKST())
+  const { empty } = await generateReport(c.env, c.env.DB, kind, date)
+  const to = `/reports?kind=${kind}&date=${date}`
+  return empty
+    ? c.redirect(`${to}&t=warn&msg=${encodeURIComponent('기록된 업무가 없어 빈 보고서가 만들어졌습니다.')}`)
+    : back(c, to, '보고서를 만들었습니다.')
+})
+
+app.post('/reports/drive', async (c) => {
+  const form = await c.req.formData()
+  const kind = kindOr(form.get('kind'))
+  const date = dateOr(form.get('date'), todayKST())
+  const to = `/reports?kind=${kind}&date=${date}`
+  try {
+    if (!driveConfigured(c.env)) throw new Error('구글 드라이브 설정이 없습니다.')
+    const report = await db.getReport(c.env.DB, kind, date)
+    if (!report) throw new Error('먼저 보고서를 만들어 주세요.')
+    const up = await uploadHtml(c.env, report.filename, report.html)
+    await db.setReportDrive(c.env.DB, kind, date, up.id, up.link)
+    return back(c, to, `드라이브에 ${up.updated ? '덮어썼습니다' : '저장했습니다'}: ${report.filename}`)
+  } catch (e) {
+    return c.redirect(`${to}&t=err&msg=${encodeURIComponent(e.message)}`)
+  }
+})
+
+app.get('/reports/preview', async (c) => {
+  const report = await db.getReport(c.env.DB, kindOr(c.req.query('kind')),
+    dateOr(c.req.query('date'), todayKST()))
+  if (!report) return c.notFound()
+  return c.html(report.html)
+})
+
+app.get('/reports/download', async (c) => {
+  const kind = kindOr(c.req.query('kind'))
+  const date = dateOr(c.req.query('date'), todayKST())
+  const report = await db.getReport(c.env.DB, kind, date)
+  if (!report) return c.notFound()
+  return new Response(report.html, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${filenameFor(kind, date)}"`,
+    },
+  })
+})
+
+/* ── 정해진 시각에 스스로 실행 ──────────────────────────── */
+
+/**
+ * cron이 부를 때 도는 부분. 주말·공휴일이면 아무것도 만들지 않는다.
+ * 어느 보고서를 만들지는 요일로 정한다 — 금요일 UTC 08시는 주간, 나머지는 일일.
+ */
+async function runScheduled(event, env) {
+  const date = todayKST()
+  const settings = await db.getSettings(env.DB)
+  const skip = skipReason(date, settings.holidays)
+  if (skip) return { skipped: skip, date }
+
+  const hour = new Date(event.scheduledTime).getUTCHours()
+  const kind = hour === 8 ? 'weekly' : 'daily'
+
+  const { empty, filename } = await generateReport(env, env.DB, kind, date)
+  if (empty) return { skipped: '기록된 업무 없음', date, kind }
+
+  if (driveConfigured(env)) {
+    const report = await db.getReport(env.DB, kind, date)
+    const up = await uploadHtml(env, report.filename, report.html)
+    await db.setReportDrive(env.DB, kind, date, up.id, up.link)
+    return { ok: true, kind, date, filename, drive: up.link }
+  }
+  return { ok: true, kind, date, filename, drive: null }
+}
+
+export default {
+  fetch: app.fetch,
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      runScheduled(event, env).then(
+        (r) => console.log('scheduled', JSON.stringify(r)),
+        (e) => console.error('scheduled failed', e.message)
+      )
+    )
+  },
+}

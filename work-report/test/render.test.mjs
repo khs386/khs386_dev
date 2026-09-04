@@ -7,10 +7,10 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-import { renderDaily } from '../lib/report/daily.js'
-import { renderWeekly } from '../lib/report/weekly.js'
-import { barColor, ddayColor } from '../lib/report/colors.js'
-import { koreanDate, koreanWeek, dday, barHeight } from '../lib/report/format.js'
+import { renderDaily } from '../src/lib/report/daily.js'
+import { renderWeekly } from '../src/lib/report/weekly.js'
+import { barColor, ddayColor } from '../src/lib/report/colors.js'
+import { koreanDate, koreanWeek, dday, barHeight } from '../src/lib/report/format.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const read = (p) => readFileSync(join(here, p), 'utf8')

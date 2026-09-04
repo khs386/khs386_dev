@@ -1,0 +1,255 @@
+// D1 접근. SQLite에는 배열·불리언 타입이 없어서 여기서 앱이 쓰는 모양으로 바꿔 준다.
+
+const uuid = () => crypto.randomUUID()
+const bool = (v) => (v ? 1 : 0)
+const num = (v) => (v === '' || v === null || v === undefined ? null : Number(v))
+const str = (v) => (v === '' || v === undefined ? null : v)
+
+function parseLines(json) {
+  try {
+    const v = JSON.parse(json || '[]')
+    return Array.isArray(v) ? v : []
+  } catch {
+    return []
+  }
+}
+
+const rowTask = (r) => ({ ...r, is_misc: !!r.is_misc, archived: !!r.archived })
+const rowLog = (r) => ({ ...r, is_misc: !!r.is_misc, detail_lines: parseLines(r.detail_lines) })
+
+/* ── 단위 업무 ─────────────────────────────────────────── */
+
+export async function listTasks(db, { archived = false } = {}) {
+  const { results } = await db
+    .prepare(
+      `select * from tasks where archived = ?
+       order by (deadline is null), deadline, created_at`
+    )
+    .bind(bool(archived))
+    .all()
+  return (results || []).map(rowTask)
+}
+
+export async function getTask(db, id) {
+  const r = await db.prepare('select * from tasks where id = ?').bind(id).first()
+  return r ? rowTask(r) : null
+}
+
+export async function createTask(db, f) {
+  const id = uuid()
+  await db
+    .prepare(
+      `insert into tasks (id, title, series, work_type, priority, status, progress, deadline, is_misc)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .bind(id, f.title.trim(), str(f.series), str(f.work_type), f.priority, f.status,
+          num(f.progress), str(f.deadline), bool(f.is_misc))
+    .run()
+  return id
+}
+
+export async function updateTask(db, id, f) {
+  await db
+    .prepare(
+      `update tasks set title = ?, series = ?, work_type = ?, priority = ?,
+              status = ?, progress = ?, deadline = ?, is_misc = ? where id = ?`
+    )
+    .bind(f.title.trim(), str(f.series), str(f.work_type), f.priority, f.status,
+          num(f.progress), str(f.deadline), bool(f.is_misc), id)
+    .run()
+}
+
+export async function setTaskArchived(db, id, archived) {
+  await db.prepare('update tasks set archived = ? where id = ?').bind(bool(archived), id).run()
+}
+
+export async function deleteTask(db, id) {
+  await db.prepare('delete from tasks where id = ?').bind(id).run()
+}
+
+/* ── 일별 기록 ─────────────────────────────────────────── */
+
+export async function listLogs(db, date) {
+  const { results } = await db
+    .prepare('select * from daily_logs where log_date = ? order by sort_order, created_at')
+    .bind(date)
+    .all()
+  return (results || []).map(rowLog)
+}
+
+export async function addLogFromTask(db, date, task, order) {
+  await db
+    .prepare(
+      `insert into daily_logs
+        (id, log_date, task_id, title, detail_lines, status, priority, progress, deadline, is_misc, sort_order)
+       values (?, ?, ?, ?, '[]', ?, ?, ?, ?, ?, ?)`
+    )
+    .bind(uuid(), date, task.id, task.title, task.status, task.priority,
+          task.progress, task.deadline, bool(task.is_misc), order)
+    .run()
+}
+
+export async function addLogFree(db, date, title, order) {
+  await db
+    .prepare(
+      `insert into daily_logs
+        (id, log_date, task_id, title, detail_lines, status, priority, sort_order, is_misc)
+       values (?, ?, null, ?, '[]', '진행', '중간', ?, ?)`
+    )
+    .bind(uuid(), date, title, order, bool(title === '기타 사항'))
+    .run()
+}
+
+/** 기록을 저장하고, 연결된 단위 업무의 상태·진행률·마감도 함께 맞춘다. */
+export async function saveLog(db, id, f) {
+  const lines = String(f.detail_text || '')
+    .split('\n')
+    .map((s) => s.replace(/^[·\-•*\s]+/, '').trim())
+    .filter(Boolean)
+  await db
+    .prepare(
+      `update daily_logs set detail_lines = ?, status = ?, priority = ?,
+              progress = ?, deadline = ?, is_misc = ? where id = ?`
+    )
+    .bind(JSON.stringify(lines), f.status, f.priority, num(f.progress),
+          str(f.deadline), bool(f.is_misc), id)
+    .run()
+
+  const log = await db.prepare('select task_id from daily_logs where id = ?').bind(id).first()
+  if (log?.task_id) {
+    await db
+      .prepare('update tasks set status = ?, priority = ?, progress = ?, deadline = ? where id = ?')
+      .bind(f.status, f.priority, num(f.progress), str(f.deadline), log.task_id)
+      .run()
+  }
+}
+
+export async function deleteLog(db, id) {
+  await db.prepare('delete from daily_logs where id = ?').bind(id).run()
+}
+
+export async function moveLog(db, id, dir) {
+  const row = await db.prepare('select * from daily_logs where id = ?').bind(id).first()
+  if (!row) return
+  const neighbour = await db
+    .prepare(
+      dir < 0
+        ? 'select * from daily_logs where log_date = ? and sort_order < ? order by sort_order desc limit 1'
+        : 'select * from daily_logs where log_date = ? and sort_order > ? order by sort_order limit 1'
+    )
+    .bind(row.log_date, row.sort_order)
+    .first()
+  if (!neighbour) return
+  await db.batch([
+    db.prepare('update daily_logs set sort_order = ? where id = ?').bind(neighbour.sort_order, row.id),
+    db.prepare('update daily_logs set sort_order = ? where id = ?').bind(row.sort_order, neighbour.id),
+  ])
+}
+
+/* ── 주간 현황 ─────────────────────────────────────────── */
+
+export async function listWeekly(db, weekStart) {
+  const { results } = await db
+    .prepare('select * from weekly_items where week_start = ? order by sort_order, created_at')
+    .bind(weekStart)
+    .all()
+  return results || []
+}
+
+export async function addWeeklyItem(db, weekStart, kind, item, order) {
+  await db
+    .prepare(
+      `insert into weekly_items
+        (id, week_start, kind, task_id, title, work_type, status, progress, due_date, note, output, sort_order)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, '', '', ?)`
+    )
+    .bind(uuid(), weekStart, kind, item.task_id || null, item.title, str(item.work_type),
+          str(item.status), num(item.progress), str(item.due_date), order)
+    .run()
+}
+
+export async function saveWeeklyItem(db, id, f) {
+  await db
+    .prepare(
+      `update weekly_items set title = ?, work_type = ?, status = ?, progress = ?,
+              due_date = ?, note = ?, output = ? where id = ?`
+    )
+    .bind(f.title, str(f.work_type), str(f.status), num(f.progress),
+          str(f.due_date), f.note || '', f.output || '', id)
+    .run()
+}
+
+export async function deleteWeeklyItem(db, id) {
+  await db.prepare('delete from weekly_items where id = ?').bind(id).run()
+}
+
+/* ── 시리즈 진행률 ─────────────────────────────────────── */
+
+export async function listSeries(db) {
+  const { results } = await db
+    .prepare('select * from series_progress order by sort_order')
+    .all()
+  return results || []
+}
+
+export async function saveSeries(db, entries) {
+  const now = new Date().toISOString()
+  await db.batch(
+    entries.map((e) =>
+      db
+        .prepare('update series_progress set total_progress = ?, updated_at = ? where name = ?')
+        .bind(Math.max(0, Math.min(100, Number(e.progress) || 0)), now, e.name)
+    )
+  )
+}
+
+/* ── 보고서 이력 ───────────────────────────────────────── */
+
+export async function getReport(db, kind, date) {
+  return db
+    .prepare('select * from reports where kind = ? and report_date = ?')
+    .bind(kind, date)
+    .first()
+}
+
+export async function saveReport(db, kind, date, filename, html) {
+  // 다시 만들면 이전 업로드 링크는 더 이상 이 내용을 가리키지 않으므로 함께 지운다.
+  await db
+    .prepare(
+      `insert into reports (id, kind, report_date, filename, html, drive_file_id, drive_link)
+       values (?, ?, ?, ?, ?, null, null)
+       on conflict (kind, report_date) do update set
+         filename = excluded.filename, html = excluded.html,
+         drive_file_id = null, drive_link = null, created_at = datetime('now')`
+    )
+    .bind(uuid(), kind, date, filename, html)
+    .run()
+}
+
+export async function setReportDrive(db, kind, date, fileId, link) {
+  await db
+    .prepare('update reports set drive_file_id = ?, drive_link = ? where kind = ? and report_date = ?')
+    .bind(fileId, link, kind, date)
+    .run()
+}
+
+export async function listReports(db, limit = 30) {
+  const { results } = await db
+    .prepare('select id, kind, report_date, filename, drive_link, created_at from reports order by report_date desc, kind limit ?')
+    .bind(limit)
+    .all()
+  return results || []
+}
+
+/* ── 설정 ──────────────────────────────────────────────── */
+
+export async function getSettings(db) {
+  const r = await db.prepare('select * from settings where id = 1').first()
+  let holidays = []
+  try {
+    holidays = JSON.parse(r?.holidays || '[]')
+  } catch {
+    holidays = []
+  }
+  return { footer: r?.footer || '', holidays }
+}
