@@ -1,0 +1,785 @@
+<title>업무보고서 설치 안내</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#eef3f1; --surface:#ffffff; --surface-2:#f4f8f6; --line:#dae4e1; --line-soft:#e8efed;
+  --ink:#15201e; --ink-2:#42544f; --ink-3:#788c86;
+  --accent:#0a7c6e; --accent-soft:#e2f0ec; --accent-line:#a8d6cc;
+  --flag:#b4531b; --flag-soft:#fcefe4; --flag-line:#f0c9a6;
+  --ok:#4a7c1f; --ok-soft:#eaf4e0;
+  --code:#1c2a27; --code-ink:#dbe8e4;
+  --r:12px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0d1412; --surface:#161f1d; --surface-2:#1b2523; --line:#283532; --line-soft:#212c2a;
+    --ink:#e3ebe8; --ink-2:#a8b9b4; --ink-3:#7d918b;
+    --accent:#4cbfa6; --accent-soft:#12302a; --accent-line:#1f5349;
+    --flag:#eb9a5e; --flag-soft:#2e2318; --flag-line:#573c22;
+    --ok:#95c95f; --ok-soft:#1d2b16;
+    --code:#0a100f; --code-ink:#cfe0db;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0d1412; --surface:#161f1d; --surface-2:#1b2523; --line:#283532; --line-soft:#212c2a;
+  --ink:#e3ebe8; --ink-2:#a8b9b4; --ink-3:#7d918b;
+  --accent:#4cbfa6; --accent-soft:#12302a; --accent-line:#1f5349;
+  --flag:#eb9a5e; --flag-soft:#2e2318; --flag-line:#573c22;
+  --ok:#95c95f; --ok-soft:#1d2b16;
+  --code:#0a100f; --code-ink:#cfe0db;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  font-size:15.5px; line-height:1.72; -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums}
+.wrap{max-width:820px; margin:0 auto; padding:44px 22px 90px}
+
+/* ── 머리 ── */
+.eyebrow{
+  font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--accent); margin:0 0 12px;
+}
+h1{
+  font-family:'Gothic A1',sans-serif; font-weight:800; font-size:clamp(31px,5vw,44px);
+  line-height:1.14; letter-spacing:-.022em; margin:0 0 14px; text-wrap:balance;
+}
+.lede{margin:0; color:var(--ink-2); font-size:16.5px; max-width:62ch}
+
+/* 진행 막대 */
+.tracker{
+  position:sticky; top:0; z-index:10; margin:26px 0 0;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  padding:13px 16px; box-shadow:0 4px 18px -12px rgba(10,60,50,.35);
+}
+.tracker .top{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:9px}
+.tracker .lab{font-family:'Gothic A1',sans-serif; font-weight:700; font-size:14px}
+.tracker .num{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-3)}
+.tracker .num b{color:var(--accent); font-weight:600}
+.tbar{height:7px; border-radius:20px; background:var(--line-soft); overflow:hidden}
+.tbar span{display:block; height:100%; width:0; background:var(--accent); border-radius:20px; transition:width .25s ease}
+.tracker .reset{
+  font:inherit; font-size:12px; color:var(--ink-3); background:none; border:0;
+  padding:0; margin-top:8px; cursor:pointer; text-decoration:underline;
+}
+.tracker .reset:hover{color:var(--ink-2)}
+
+/* 단계 이동 */
+.jump{display:flex; gap:7px; flex-wrap:wrap; margin:16px 0 0}
+.jump a{
+  font-size:13px; text-decoration:none; color:var(--ink-2);
+  background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:5px 13px;
+}
+.jump a:hover{border-color:var(--accent); color:var(--accent)}
+.jump a:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+/* ── 단계 ── */
+.stage{margin:44px 0 0}
+.stage-head{
+  display:flex; align-items:baseline; gap:13px; padding-bottom:11px;
+  border-bottom:2px solid var(--accent);
+}
+.stage-no{
+  font-family:'IBM Plex Mono',monospace; font-size:12.5px; font-weight:600;
+  color:var(--accent); letter-spacing:.08em; white-space:nowrap;
+}
+.stage-head h2{
+  font-family:'Gothic A1',sans-serif; font-weight:800; font-size:23px;
+  margin:0; letter-spacing:-.018em; flex:1;
+}
+.mins{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-3); white-space:nowrap}
+.stage-intro{margin:14px 0 0; color:var(--ink-2); font-size:15px}
+
+/* 각 걸음 */
+ol.steps{list-style:none; margin:20px 0 0; padding:0; counter-reset:s}
+ol.steps > li{
+  counter-increment:s; position:relative; padding:0 0 0 46px; margin:0 0 22px;
+}
+ol.steps > li::before{
+  content:counter(s); position:absolute; left:0; top:1px;
+  width:30px; height:30px; border-radius:50%;
+  background:var(--surface); border:1px solid var(--line); color:var(--ink-3);
+  font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:600;
+  display:flex; align-items:center; justify-content:center;
+}
+ol.steps > li.done::before{background:var(--accent); border-color:var(--accent); color:#fff}
+ol.steps h3{
+  font-family:'Gothic A1',sans-serif; font-weight:700; font-size:16.5px;
+  margin:0 0 6px; letter-spacing:-.01em;
+}
+ol.steps p{margin:0 0 8px}
+ol.steps p:last-child{margin-bottom:0}
+ol.steps ul{margin:8px 0; padding-left:20px}
+ol.steps li li{margin:3px 0}
+
+.tick{display:flex; align-items:center; gap:8px; margin-top:10px}
+.tick input{width:17px; height:17px; accent-color:var(--accent); cursor:pointer; margin:0}
+.tick label{font-size:13px; color:var(--ink-3); cursor:pointer; user-select:none}
+.tick input:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+li.done .tick label{color:var(--accent)}
+
+/* 화면 경로 */
+.path{
+  font-family:'IBM Plex Mono',monospace; font-size:13px;
+  background:var(--surface-2); border:1px solid var(--line); border-radius:7px;
+  padding:1px 8px; white-space:nowrap; color:var(--ink-2);
+}
+code{
+  font-family:'IBM Plex Mono',monospace; font-size:13.5px;
+  background:var(--surface-2); border:1px solid var(--line);
+  border-radius:6px; padding:1px 6px; word-break:break-all;
+}
+pre{
+  margin:10px 0; background:var(--code); color:var(--code-ink);
+  border-radius:10px; padding:13px 15px; overflow-x:auto;
+  font-family:'IBM Plex Mono',monospace; font-size:13px; line-height:1.65;
+}
+
+/* 주의 / 확인 */
+.flag, .verify{
+  border-radius:10px; padding:12px 15px; margin:12px 0 0; font-size:14px;
+  display:flex; gap:11px; align-items:flex-start;
+}
+.flag{background:var(--flag-soft); border:1px solid var(--flag-line); color:var(--ink-2)}
+.verify{background:var(--ok-soft); border:1px solid transparent; color:var(--ink-2)}
+.flag .ic, .verify .ic{
+  font-family:'Gothic A1',sans-serif; font-weight:800; font-size:12px;
+  letter-spacing:.04em; white-space:nowrap; padding-top:2px;
+}
+.flag .ic{color:var(--flag)}
+.verify .ic{color:var(--ok)}
+.flag b, .verify b{color:var(--ink); font-weight:600}
+
+/* 표 */
+.tablewrap{overflow-x:auto; margin:18px 0 0; border:1px solid var(--line); border-radius:var(--r)}
+table{border-collapse:collapse; width:100%; min-width:560px; background:var(--surface)}
+th, td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top; font-size:14px}
+th{
+  background:var(--surface-2); font-family:'Gothic A1',sans-serif; font-weight:700;
+  font-size:13px; color:var(--ink-2); white-space:nowrap;
+}
+tr:last-child td{border-bottom:0}
+td.k{font-family:'IBM Plex Mono',monospace; font-size:12.5px; white-space:nowrap; color:var(--accent)}
+td.src{color:var(--ink-3); font-size:13px}
+
+/* 문제 해결 */
+.trouble{margin:16px 0 0; display:grid; gap:1px; background:var(--line); border:1px solid var(--line); border-radius:var(--r); overflow:hidden}
+.trouble > div{background:var(--surface); padding:15px 17px}
+.trouble .msg{
+  font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--flag);
+  margin:0 0 5px; word-break:break-word;
+}
+.trouble .fix{margin:0; font-size:14px; color:var(--ink-2)}
+.trouble .fix b{color:var(--ink); font-weight:600}
+
+footer{margin:52px 0 0; padding-top:20px; border-top:1px solid var(--line); color:var(--ink-3); font-size:13px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:600px){
+  .wrap{padding:30px 15px 60px}
+  ol.steps > li{padding-left:38px}
+  ol.steps > li::before{width:26px; height:26px; font-size:12px}
+  .stage-head{flex-wrap:wrap}
+}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">설치 안내 · 처음 한 번</p>
+  <h1>업무보고서 설치 안내</h1>
+  <p class="lede">
+    앱을 쓰려면 서비스 세 곳을 차례로 연결해야 합니다.
+    데이터를 담을 <b>Supabase</b>, 보고서를 저장할 <b>구글 드라이브</b>, 앱을 띄울 <b>Vercel</b>입니다.
+    아래 순서대로 따라가시면 됩니다. 한 걸음씩 마칠 때마다 체크해 두면 어디까지 했는지 남습니다.
+  </p>
+
+  <div class="tracker">
+    <div class="top">
+      <span class="lab">진행 상황</span>
+      <span class="num"><b id="cdone">0</b> / <span id="ctotal">0</span> 걸음</span>
+    </div>
+    <div class="tbar"><span id="tfill"></span></div>
+    <button class="reset" id="reset" type="button">처음부터 다시 체크하기</button>
+  </div>
+
+  <nav class="jump" aria-label="단계 바로가기">
+    <a href="#s1">1. Supabase</a>
+    <a href="#s2">2. 구글 드라이브</a>
+    <a href="#s3">3. Vercel 배포</a>
+    <a href="#s4">4. 첫 실행</a>
+    <a href="#s5">5. 자동 생성</a>
+    <a href="#env">환경변수 표</a>
+    <a href="#help">문제 해결</a>
+  </nav>
+
+  <!-- ─────────────────────────────────────────── -->
+  <section class="stage" id="s1">
+    <div class="stage-head">
+      <span class="stage-no">1단계</span>
+      <h2>Supabase 프로젝트 만들기</h2>
+      <span class="mins">약 10분</span>
+    </div>
+    <p class="stage-intro">
+      업무 데이터가 저장될 곳입니다. 모닝브리프와는 <b>따로</b> 새 프로젝트를 만듭니다.
+      무료 요금제로 충분합니다.
+    </p>
+
+    <ol class="steps">
+      <li data-id="s1-1">
+        <h3>Supabase에 로그인합니다</h3>
+        <p><code>supabase.com</code>에 접속해 오른쪽 위 <b>Sign in</b>을 누릅니다. 깃허브 계정으로 들어가면 편합니다.</p>
+      </li>
+
+      <li data-id="s1-2">
+        <h3>새 프로젝트를 만듭니다</h3>
+        <p>대시보드에서 <b>New project</b>를 누르고 아래처럼 채웁니다.</p>
+        <ul>
+          <li><b>Name</b> — <code>work-report</code></li>
+          <li><b>Database Password</b> — <b>Generate a password</b>를 눌러 만든 뒤 <b>어딘가에 적어 두세요.</b> 다시 볼 수 없습니다.</li>
+          <li><b>Region</b> — <code>Northeast Asia (Seoul)</code></li>
+        </ul>
+        <p><b>Create new project</b>를 누르면 1~2분쯤 준비 시간이 걸립니다.</p>
+      </li>
+
+      <li data-id="s1-3">
+        <h3>표를 만듭니다</h3>
+        <p>
+          왼쪽 메뉴에서 <span class="path">SQL Editor</span>를 열고 <b>New query</b>를 누릅니다.
+          저장소의 <code>work-report/schema.sql</code> 파일을 열어 <b>전체를 복사</b>해 붙여넣고
+          오른쪽 아래 <b>Run</b>을 누릅니다.
+        </p>
+        <div class="verify">
+          <span class="ic">확인</span>
+          <span>왼쪽 <span class="path">Table Editor</span>에 표 여섯 개가 보이면 됩니다 —
+          <span class="mono">tasks, daily_logs, weekly_items, series_progress, reports, settings</span></span>
+        </div>
+      </li>
+
+      <li data-id="s1-4">
+        <h3>열쇠 세 개를 복사해 둡니다</h3>
+        <p>
+          왼쪽 아래 <span class="path">Project Settings</span> → <span class="path">API</span>로 갑니다.
+          (최신 화면에서는 <span class="path">API Keys</span>라는 이름일 수 있습니다.)
+          아래 세 가지를 메모장 같은 곳에 모아 두세요. 3단계에서 씁니다.
+        </p>
+        <ul>
+          <li><b>Project URL</b> — <span class="mono">https://…supabase.co</span></li>
+          <li><b>anon public</b> 키 — 새 화면에서는 <b>publishable</b>이라고 적혀 있습니다</li>
+          <li><b>service_role</b> 키 — 새 화면에서는 <b>secret</b>입니다</li>
+        </ul>
+        <div class="flag">
+          <span class="ic">주의</span>
+          <span><b>service_role 키는 절대 남에게 보여 주지 마세요.</b>
+          이 키 하나로 모든 데이터를 읽고 쓸 수 있습니다. Vercel 환경변수에만 넣습니다.</span>
+        </div>
+      </li>
+
+      <li data-id="s1-5">
+        <h3>내 계정을 만듭니다</h3>
+        <p>
+          왼쪽 <span class="path">Authentication</span> → <span class="path">Users</span> →
+          <b>Add user</b> → <b>Create new user</b>를 고릅니다.
+          이메일과 비밀번호를 넣고, <b>Auto Confirm User를 꼭 켜 주세요.</b>
+          이걸 켜지 않으면 확인 메일을 거쳐야 로그인이 됩니다.
+        </p>
+      </li>
+
+      <li data-id="s1-6">
+        <h3>다른 사람이 가입하지 못하게 막습니다</h3>
+        <p>
+          <span class="path">Authentication</span> → <span class="path">Sign In / Providers</span>에서
+          <b>Email</b>을 열고 <b>Allow new users to sign up</b>을 끕니다.
+          혼자 쓰는 앱이니 이제 새 가입은 필요 없습니다.
+        </p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ─────────────────────────────────────────── -->
+  <section class="stage" id="s2">
+    <div class="stage-head">
+      <span class="stage-no">2단계</span>
+      <h2>구글 드라이브 준비</h2>
+      <span class="mins">약 15분</span>
+    </div>
+    <p class="stage-intro">
+      앱이 보고서를 드라이브에 저장하려면, 앱 몫의 구글 계정이 하나 필요합니다.
+      이걸 <b>서비스 계정</b>이라고 합니다. 사람이 로그인하는 계정이 아니라 프로그램이 쓰는 계정입니다.
+    </p>
+
+    <ol class="steps">
+      <li data-id="s2-1">
+        <h3>보고서를 담을 폴더를 만듭니다</h3>
+        <p>
+          <code>drive.google.com</code>에서 폴더를 하나 만듭니다. 이름은 <b>업무보고서</b> 정도면 됩니다.
+          그 폴더를 열고 주소창을 보면 이렇게 생겼습니다.
+        </p>
+        <pre>https://drive.google.com/drive/folders/<b>1AbCdEfGhIjKlMnOpQrStUvWxYz</b></pre>
+        <p><code>folders/</code> 뒤의 긴 문자열이 <b>폴더 ID</b>입니다. 복사해 두세요.</p>
+      </li>
+
+      <li data-id="s2-2">
+        <h3>구글 클라우드에 프로젝트를 만듭니다</h3>
+        <p>
+          <code>console.cloud.google.com</code>에 들어가 맨 위 프로젝트 선택기를 누르고
+          <b>새 프로젝트</b>를 만듭니다. 이름은 <code>work-report</code>로 하겠습니다.
+          만든 뒤 그 프로젝트가 선택돼 있는지 확인하세요.
+        </p>
+      </li>
+
+      <li data-id="s2-3">
+        <h3>드라이브 API를 켭니다</h3>
+        <p>
+          왼쪽 메뉴 <span class="path">API 및 서비스</span> → <span class="path">라이브러리</span>에서
+          <b>Google Drive API</b>를 검색해 누르고 <b>사용</b> 버튼을 누릅니다.
+        </p>
+        <div class="flag">
+          <span class="ic">주의</span>
+          <span>이걸 켜지 않으면 나중에 업로드할 때 <b>API가 사용 설정되지 않았다</b>는 오류가 납니다.</span>
+        </div>
+      </li>
+
+      <li data-id="s2-4">
+        <h3>서비스 계정을 만듭니다</h3>
+        <p>
+          <span class="path">API 및 서비스</span> → <span class="path">사용자 인증 정보</span>로 가서
+          위쪽 <b>+ 사용자 인증 정보 만들기</b> → <b>서비스 계정</b>을 고릅니다.
+        </p>
+        <ul>
+          <li><b>서비스 계정 이름</b> — <code>work-report</code></li>
+          <li><b>만들고 계속하기</b>를 누른 뒤, 역할(Role)은 <b>비워 둔 채</b> <b>완료</b>를 누릅니다</li>
+        </ul>
+        <p>목록에 <span class="mono">work-report@….iam.gserviceaccount.com</span> 같은 주소가 생깁니다. 이게 앱의 계정입니다.</p>
+      </li>
+
+      <li data-id="s2-5">
+        <h3>열쇠 파일을 내려받습니다</h3>
+        <p>
+          방금 만든 서비스 계정을 누르고 <span class="path">키</span> 탭으로 갑니다.
+          <b>키 추가</b> → <b>새 키 만들기</b> → <b>JSON</b> → <b>만들기</b>를 누르면
+          파일이 하나 내려받아집니다.
+        </p>
+        <div class="flag">
+          <span class="ic">주의</span>
+          <span>이 파일은 <b>비밀번호와 같습니다.</b> 다시 받을 수 없으니 안전한 곳에 두시고,
+          메신저나 메일로 보내지 마세요.</span>
+        </div>
+      </li>
+
+      <li data-id="s2-6">
+        <h3>파일에서 값 두 개를 꺼냅니다</h3>
+        <p>내려받은 JSON 파일을 메모장으로 열면 이런 줄들이 있습니다.</p>
+        <pre>"client_email": "work-report@work-report.iam.gserviceaccount.com",
+"private_key": "-----BEGIN PRIVATE KEY-----\nMIIE…\n-----END PRIVATE KEY-----\n",</pre>
+        <p>
+          두 값을 복사해 둡니다. 복사할 때는 <b>바깥쪽 큰따옴표는 빼고</b>, 안쪽 내용만 가져오세요.
+          <code>private_key</code>는 아주 길고 중간에 <code>\n</code>이 잔뜩 들어 있는데,
+          <b>그대로 두시면 됩니다.</b> 고치지 마세요.
+        </p>
+      </li>
+
+      <li data-id="s2-7">
+        <h3>폴더를 서비스 계정에 공유합니다</h3>
+        <p>
+          드라이브로 돌아가 1번에서 만든 폴더에 마우스 오른쪽 → <b>공유</b>를 누릅니다.
+          <b>client_email</b> 주소를 붙여넣고 권한을 <b>편집자</b>로 바꾼 뒤,
+          <b>알림 보내기</b> 체크를 풀고 <b>공유</b>를 누릅니다.
+        </p>
+        <div class="flag">
+          <span class="ic">가장 자주 막히는 곳</span>
+          <span>
+            <b>이 걸음을 빠뜨리면 저장이 실패합니다.</b>
+            서비스 계정은 자기 저장 공간이 없어서, 사람이 폴더를 빌려줘야만 그 안에 파일을 만들 수 있습니다.
+            나중에 <span class="mono">File not found</span> 오류가 나면 십중팔구 여기입니다.
+          </span>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ─────────────────────────────────────────── -->
+  <section class="stage" id="s3">
+    <div class="stage-head">
+      <span class="stage-no">3단계</span>
+      <h2>Vercel에 앱 올리기</h2>
+      <span class="mins">약 10분</span>
+    </div>
+    <p class="stage-intro">
+      앞에서 모은 값들을 넣고 앱을 인터넷에 띄웁니다. 이것도 무료 요금제로 됩니다.
+    </p>
+
+    <ol class="steps">
+      <li data-id="s3-1">
+        <h3>저장소를 불러옵니다</h3>
+        <p>
+          <code>vercel.com</code>에 깃허브 계정으로 로그인하고
+          <b>Add New</b> → <b>Project</b>를 누릅니다.
+          목록에서 <code>khs386/voting-app</code>을 찾아 <b>Import</b>를 누릅니다.
+        </p>
+      </li>
+
+      <li data-id="s3-2">
+        <h3>시작 폴더를 지정합니다</h3>
+        <p>
+          설정 화면의 <b>Root Directory</b> 옆 <b>Edit</b>를 누르고
+          <code>work-report</code> 폴더를 고릅니다.
+        </p>
+        <div class="flag">
+          <span class="ic">놓치기 쉬움</span>
+          <span>
+            이 저장소에는 앱이 여러 개 들어 있습니다.
+            <b>여기를 <span class="mono">work-report</span>로 바꾸지 않으면 엉뚱한 앱이 배포되거나 빌드가 실패합니다.</b>
+          </span>
+        </div>
+      </li>
+
+      <li data-id="s3-3">
+        <h3>환경변수 일곱 개를 넣습니다</h3>
+        <p>
+          같은 화면의 <b>Environment Variables</b>를 펼치고
+          아래 <a href="#env">환경변수 표</a>대로 이름과 값을 하나씩 추가합니다.
+          <b>CRON_SECRET</b>은 정해진 값이 없으니, 아무 긴 문자열이나 직접 만들어 넣으시면 됩니다.
+        </p>
+        <div class="flag">
+          <span class="ic">주의</span>
+          <span>
+            이름은 <b>한 글자도 틀리면 안 됩니다.</b> 대소문자와 밑줄까지 그대로 복사해 넣으세요.
+            <span class="mono">NEXT_PUBLIC_</span>으로 시작하는 것들이 특히 헷갈립니다.
+          </span>
+        </div>
+      </li>
+
+      <li data-id="s3-4">
+        <h3>배포합니다</h3>
+        <p>
+          <b>Deploy</b>를 누르고 기다립니다. 1~2분이면 끝납니다.
+          끝나면 <span class="mono">…vercel.app</span> 주소가 나옵니다. 이게 앱 주소입니다.
+        </p>
+        <div class="verify">
+          <span class="ic">확인</span>
+          <span>그 주소로 들어가 로그인 화면이 뜨면 성공입니다.</span>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ─────────────────────────────────────────── -->
+  <section class="stage" id="s4">
+    <div class="stage-head">
+      <span class="stage-no">4단계</span>
+      <h2>첫 보고서 만들어 보기</h2>
+      <span class="mins">약 10분</span>
+    </div>
+    <p class="stage-intro">
+      제대로 연결됐는지 실제로 한 바퀴 돌려 봅니다. 순서대로 하시면 됩니다.
+    </p>
+
+    <ol class="steps">
+      <li data-id="s4-1">
+        <h3>로그인합니다</h3>
+        <p>1단계 5번에서 만든 이메일과 비밀번호로 들어갑니다.</p>
+      </li>
+
+      <li data-id="s4-2">
+        <h3>시리즈 진행률을 넣습니다</h3>
+        <p>
+          위쪽 <span class="path">시리즈</span>를 누르고 세 칸에 숫자를 넣은 뒤 <b>저장</b>합니다.
+          노션 화면에 보이는 값을 그대로 옮겨 적으시면 됩니다.
+          아래 막대가 바로 바뀌면 잘 들어간 것입니다.
+        </p>
+      </li>
+
+      <li data-id="s4-3">
+        <h3>업무를 두어 개 등록합니다</h3>
+        <p>
+          <span class="path">업무</span>에서 업무명, 진행 상태, 진행률, 마감을 넣고 <b>추가</b>합니다.
+          진행률과 마감은 비워 둬도 됩니다. 비우면 보고서에서 그 부분이 빠집니다.
+        </p>
+      </li>
+
+      <li data-id="s4-4">
+        <h3>오늘 한 일을 적습니다</h3>
+        <p>
+          <span class="path">일일 기록</span>에서 오늘 날짜를 확인하고,
+          <b>업무 목록에서 고르기</b>로 업무를 넣습니다.
+          세부내용 칸에 <b>한 줄에 하나씩</b> 적고 <b>저장</b>을 누릅니다.
+          여기서 저장하면 업무 목록의 상태와 진행률도 같이 갱신됩니다.
+        </p>
+      </li>
+
+      <li data-id="s4-5">
+        <h3>보고서를 만듭니다</h3>
+        <p>
+          <span class="path">보고서</span>에서 <b>보고서 만들기</b>를 누릅니다.
+          아래 미리보기에 보고서가 나타납니다.
+        </p>
+      </li>
+
+      <li data-id="s4-6">
+        <h3>드라이브에 저장해 봅니다</h3>
+        <p>
+          <b>구글 드라이브에 저장</b>을 누릅니다.
+          초록 줄에 파일 이름과 <b>드라이브에서 열기</b> 링크가 뜨면 성공입니다.
+        </p>
+        <div class="verify">
+          <span class="ic">확인</span>
+          <span>2단계에서 만든 드라이브 폴더에 <span class="mono">report_2026-09-04.html</span> 같은
+          파일이 생겼는지 직접 열어 보세요. 한글이 제대로 보이면 끝입니다.</span>
+        </div>
+        <div class="flag">
+          <span class="ic">막히면</span>
+          <span>빨간 줄에 오류가 뜨면 그 문장을 아래 <a href="#help">문제 해결</a>에서 찾아보세요.</span>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ─────────────────────────────────────────── -->
+  <section class="stage" id="s5">
+    <div class="stage-head">
+      <span class="stage-no">5단계</span>
+      <h2>자동 생성 켜기</h2>
+      <span class="mins">약 5분</span>
+    </div>
+    <p class="stage-intro">
+      여기까지 하면 손으로는 다 됩니다. 이제 정해진 시각에 알아서 만들게 합니다.
+      평일 저녁 6시에 일일 보고서, 금요일 오후 5시에 주간 보고서입니다.
+      주말과 공휴일은 알아서 건너뜁니다.
+    </p>
+
+    <ol class="steps">
+      <li data-id="s5-1">
+        <h3>이미 설정돼 있습니다</h3>
+        <p>
+          시각은 저장소의 <code>vercel.json</code>에 들어 있어서, 배포하면 자동으로 등록됩니다.
+          따로 하실 일은 없습니다. Vercel의 <span class="path">Settings</span> →
+          <span class="path">Cron Jobs</span>에서 등록됐는지 볼 수 있습니다.
+        </p>
+      </li>
+
+      <li data-id="s5-2">
+        <h3>무료 요금제로 둘 다 돌아갑니다</h3>
+        <p>
+          Vercel 무료(Hobby) 요금제의 제한은 <b>자동 실행 하나가 하루에 한 번까지</b>입니다.
+          일일은 하루 한 번, 주간은 주 한 번이라 <b>둘 다 무료로 동작합니다.</b>
+          따로 하실 일은 없습니다.
+        </p>
+        <div class="flag">
+          <span class="ic">알아 둘 것</span>
+          <span>
+            무료 요금제에서는 <b>지정한 시(hour) 안의 아무 때나</b> 실행됩니다.
+            18시 정각이 아니라 18시 40분에 만들어질 수 있다는 뜻입니다.
+            분 단위로 정확해야 한다면 깃허브 액션에서 앱 주소를 불러 주는 방법을 쓰면 됩니다.
+          </span>
+        </div>
+        <p>
+          자동으로 안 만들어진 날이 있어도 괜찮습니다.
+          <span class="path">보고서</span> 화면에서 <b>보고서 만들기</b>를 누르면 그만입니다.
+        </p>
+      </li>
+
+      <li data-id="s5-3">
+        <h3>잘 도는지 한 번 확인합니다</h3>
+        <p>
+          기다리지 않고 지금 시험해 보려면, 터미널에서 아래를 실행합니다.
+          <code>여기에_CRON_SECRET</code>과 주소는 본인 것으로 바꾸세요.
+        </p>
+        <pre>curl -H "Authorization: Bearer 여기에_CRON_SECRET" \
+  "https://내앱.vercel.app/api/cron/daily?date=2026-09-04&amp;force=1"</pre>
+        <p>
+          <span class="mono">{"ok":true,…}</span>가 돌아오고 드라이브에 파일이 생기면 정상입니다.
+          <code>force=1</code>은 주말·공휴일 검사를 건너뛰라는 뜻이라 아무 날에나 시험할 수 있습니다.
+        </p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ─────────────────────────────────────────── -->
+  <section class="stage" id="env">
+    <div class="stage-head">
+      <span class="stage-no">참고</span>
+      <h2>환경변수 표</h2>
+    </div>
+    <p class="stage-intro">
+      Vercel의 <b>Environment Variables</b>에 넣을 값들입니다. 일곱 개 모두 필요합니다.
+    </p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>이름</th><th>값</th><th>어디서 가져오나</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="k">NEXT_PUBLIC_SUPABASE_URL</td>
+            <td>https://…supabase.co</td>
+            <td class="src">1단계 4번 · Project URL</td>
+          </tr>
+          <tr>
+            <td class="k">NEXT_PUBLIC_SUPABASE_ANON_KEY</td>
+            <td>eyJ… 로 시작하는 긴 문자열</td>
+            <td class="src">1단계 4번 · anon public (publishable)</td>
+          </tr>
+          <tr>
+            <td class="k">SUPABASE_SERVICE_ROLE_KEY</td>
+            <td>eyJ… 로 시작하는 긴 문자열</td>
+            <td class="src">1단계 4번 · service_role (secret)</td>
+          </tr>
+          <tr>
+            <td class="k">GOOGLE_SERVICE_ACCOUNT_EMAIL</td>
+            <td>…iam.gserviceaccount.com</td>
+            <td class="src">2단계 6번 · JSON의 client_email</td>
+          </tr>
+          <tr>
+            <td class="k">GOOGLE_PRIVATE_KEY</td>
+            <td>-----BEGIN PRIVATE KEY----- 로 시작하는 아주 긴 값</td>
+            <td class="src">2단계 6번 · JSON의 private_key (따옴표 빼고)</td>
+          </tr>
+          <tr>
+            <td class="k">GOOGLE_DRIVE_FOLDER_ID</td>
+            <td>1AbCdEf… 같은 문자열</td>
+            <td class="src">2단계 1번 · 폴더 주소의 folders/ 뒤</td>
+          </tr>
+          <tr>
+            <td class="k">CRON_SECRET</td>
+            <td>아무 긴 임의 문자열</td>
+            <td class="src">직접 만들기 (예: 비밀번호 생성기)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="flag">
+      <span class="ic">기억할 것</span>
+      <span>
+        <b>환경변수를 고친 뒤에는 반드시 다시 배포해야 반영됩니다.</b>
+        Vercel의 <span class="path">Deployments</span>에서 맨 위 항목의 <b>⋯</b> → <b>Redeploy</b>를 누르세요.
+      </span>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────── -->
+  <section class="stage" id="help">
+    <div class="stage-head">
+      <span class="stage-no">참고</span>
+      <h2>문제 해결</h2>
+    </div>
+    <p class="stage-intro">화면에 뜬 문장을 찾아보세요.</p>
+
+    <div class="trouble">
+      <div>
+        <p class="msg">구글 드라이브 환경변수가 설정되지 않았습니다</p>
+        <p class="fix">드라이브 관련 환경변수 셋 중 하나가 빠졌습니다.
+        <b>GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, GOOGLE_DRIVE_FOLDER_ID</b>가
+        모두 있는지 Vercel에서 확인하고 <b>다시 배포</b>하세요.</p>
+      </div>
+      <div>
+        <p class="msg">드라이브 업로드 실패: File not found: 1AbC…</p>
+        <p class="fix"><b>폴더를 서비스 계정에 공유하지 않았습니다.</b>
+        2단계 7번으로 돌아가, 드라이브 폴더를 <span class="mono">client_email</span> 주소에
+        <b>편집자</b>로 공유하세요. 폴더 ID를 잘못 복사한 경우도 같은 오류가 납니다.</p>
+      </div>
+      <div>
+        <p class="msg">구글 토큰 발급 실패: invalid_grant</p>
+        <p class="fix"><b>GOOGLE_PRIVATE_KEY 값이 깨졌습니다.</b>
+        JSON 파일에서 다시 복사하되, 바깥 큰따옴표는 빼고 안쪽만 가져오세요.
+        중간의 <span class="mono">\n</span>은 지우거나 바꾸지 말고 그대로 둡니다.</p>
+      </div>
+      <div>
+        <p class="msg">Google Drive API has not been used in project …</p>
+        <p class="fix">2단계 3번을 건너뛰었습니다. 구글 클라우드에서
+        <b>Google Drive API</b>를 <b>사용</b>으로 켜 주세요. 켠 뒤 몇 분 기다려야 할 수 있습니다.</p>
+      </div>
+      <div>
+        <p class="msg">로그인이 안 되고 "Invalid login credentials"가 뜹니다</p>
+        <p class="fix">계정을 만들 때 <b>Auto Confirm User</b>를 켜지 않았을 수 있습니다.
+        Supabase의 <span class="path">Authentication</span> → <span class="path">Users</span>에서
+        해당 사용자를 지우고 다시 만들면서 그 항목을 켜세요.</p>
+      </div>
+      <div>
+        <p class="msg">화면은 뜨는데 업무 목록이 계속 비어 있습니다</p>
+        <p class="fix">Supabase 주소나 키가 잘못됐을 가능성이 큽니다.
+        <b>NEXT_PUBLIC_SUPABASE_URL</b>과 <b>NEXT_PUBLIC_SUPABASE_ANON_KEY</b>의
+        철자를 확인하고 <b>다시 배포</b>하세요. 표를 만드는 SQL을 실행하지 않은 경우도 같습니다.</p>
+      </div>
+      <div>
+        <p class="msg">자동 실행 주소를 불렀더니 "CRON_SECRET이 설정되지 않았습니다"</p>
+        <p class="fix">안전을 위해 비밀값 없이는 동작하지 않게 해 두었습니다.
+        Vercel에 <b>CRON_SECRET</b>을 넣고 다시 배포하세요.
+        "권한 없음"이 뜬다면 넣은 값과 부른 값이 서로 다른 것입니다.</p>
+      </div>
+      <div>
+        <p class="msg">배포가 실패합니다 / 엉뚱한 화면이 뜹니다</p>
+        <p class="fix"><b>Root Directory가 <span class="mono">work-report</span>가 아닙니다.</b>
+        Vercel의 <span class="path">Settings</span> → <span class="path">General</span> →
+        <b>Root Directory</b>를 고치고 다시 배포하세요.</p>
+      </div>
+      <div>
+        <p class="msg">드라이브에 저장된 파일을 열었더니 한글이 깨져 보입니다</p>
+        <p class="fix">최신 코드에서 고쳐 둔 부분입니다. Vercel이 예전 코드로 배포돼 있을 수 있으니
+        <span class="path">Deployments</span>에서 가장 최근 커밋으로 <b>다시 배포</b>하세요.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    막히는 곳이 있으면 화면에 뜬 문장을 그대로 알려 주세요. 어느 걸음에서 어긋났는지 짚어 드리겠습니다.
+    · 체크 표시는 이 브라우저에만 저장됩니다.
+  </footer>
+</div>
+
+<script>
+(function(){
+  var KEY = 'work-report-setup-v1';
+  var items = [].slice.call(document.querySelectorAll('ol.steps > li[data-id]'));
+  var fill = document.getElementById('tfill');
+  var cdone = document.getElementById('cdone');
+  var ctotal = document.getElementById('ctotal');
+
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+
+  ctotal.textContent = items.length;
+
+  items.forEach(function(li){
+    var id = li.dataset.id;
+    var box = document.createElement('div');
+    box.className = 'tick';
+    var input = document.createElement('input');
+    input.type = 'checkbox';
+    input.id = 'chk-' + id;
+    input.checked = !!saved[id];
+    var label = document.createElement('label');
+    label.htmlFor = input.id;
+    label.textContent = '했어요';
+    box.appendChild(input);
+    box.appendChild(label);
+    li.appendChild(box);
+    li.classList.toggle('done', input.checked);
+    input.addEventListener('change', function(){
+      li.classList.toggle('done', input.checked);
+      saved[id] = input.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+      paint();
+    });
+  });
+
+  function paint(){
+    var n = items.filter(function(li){ return li.classList.contains('done'); }).length;
+    cdone.textContent = n;
+    fill.style.width = items.length ? (n / items.length * 100) + '%' : '0';
+  }
+
+  document.getElementById('reset').addEventListener('click', function(){
+    items.forEach(function(li){
+      li.classList.remove('done');
+      var i = li.querySelector('input');
+      if (i) i.checked = false;
+    });
+    saved = {};
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    paint();
+  });
+
+  paint();
+})();
+</script>
