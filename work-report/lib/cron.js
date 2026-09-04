@@ -17,6 +17,14 @@ export function authorized(req) {
 }
 
 export async function runScheduled(req, kind) {
+  try {
+    return await run(req, kind)
+  } catch (e) {
+    return NextResponse.json({ error: e.message }, { status: 500 })
+  }
+}
+
+async function run(req, kind) {
   if (!authorized(req)) return NextResponse.json({ error: '권한 없음' }, { status: 401 })
   const url = new URL(req.url)
   const date = url.searchParams.get('date') || todayKST()
