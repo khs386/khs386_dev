@@ -1,7 +1,8 @@
 // 화면 여섯 개. 서버에서 HTML을 그려 보내고, 폼을 제출하면 처리 후 되돌아온다.
 import { page, esc, pill, tag, field, optionalSelect } from './layout.js'
 import { dday, koreanDate, koreanWeek, barHeight } from '../lib/report/format.js'
-import { statusColor, priorityColor, ddayColor, SERIES_COLOR, displayStatus } from '../lib/report/colors.js'
+import { SERIES_COLOR, displayStatus } from '../lib/report/colors.js'
+import { statusTint, priorityTint, ddayTint } from './ui.js'
 
 export const STATUSES = ['예정', '시작', '진행', '완료', '보류']
 export const PRIORITIES = ['높음', '중간', '낮음']
@@ -14,7 +15,7 @@ export const WORK_TYPES = [
 const ddayTag = (d) =>
   d === null
     ? '<span class="tag">마감 없음</span>'
-    : `<span class="dday" style="color:${ddayColor(d)}">D-${d}</span>`
+    : `<span class="dday" style="color:${ddayTint(d)}">D-${d}</span>`
 
 const notice = (msg, kind) =>
   msg ? `<p class="note${kind ? ' ' + kind : ''}">${msg}</p>` : ''
@@ -41,7 +42,7 @@ ${stale.length ? notice('시리즈 진행률이 아직 입력되지 않았습니
     logs.length
       ? logs.map((l) => `<div class="item">
           <span class="t">${esc(l.title)}</span>
-          ${pill(displayStatus(l.status), statusColor(l.status) || '#888')}
+          ${pill(displayStatus(l.status), statusTint(l.status))}
           ${tag(l.progress === null ? '진행률 없음' : l.progress + '%')}
           ${ddayTag(dday(l.deadline, today))}
         </div>`).join('')
@@ -69,7 +70,7 @@ ${stale.length ? notice('시리즈 진행률이 아직 입력되지 않았습니
           const d = dday(t.deadline, today)
           return `<div class="item"><span class="t">${esc(t.title)}</span>
             ${tag(t.deadline)}
-            <span class="pill" style="background:${ddayColor(d)}">D-${d}</span></div>`
+            <span class="pill" style="background:${ddayTint(d)}">D-${d}</span></div>`
         }).join('')
       : '<p class="empty">마감이 정해진 업무가 없습니다.</p>'
   }
@@ -124,8 +125,8 @@ ${archived ? '' : form}
       ? tasks.map((t) => `<div class="item">
           <span class="t">${esc(t.title)}</span>
           ${t.work_type ? tag(t.work_type) : ''}
-          ${pill(displayStatus(t.status), statusColor(t.status) || '#888')}
-          ${pill(t.priority, priorityColor(t.priority))}
+          ${pill(displayStatus(t.status), statusTint(t.status))}
+          ${pill(t.priority, priorityTint(t.priority))}
           ${tag(t.progress === null ? '진행률 없음' : t.progress + '%')}
           ${tag(t.deadline || '마감 없음')}
           ${t.is_misc ? tag('기타') : ''}
@@ -147,7 +148,7 @@ ${archived ? '' : form}
 /* ── 일일 기록 ──────────────────────────────────────────── */
 
 const savedMark = (on) =>
-  on ? '<span class="pill" style="background:var(--done)">✓ 저장했습니다</span>' : ''
+  on ? '<span class="pill" style="background:var(--green)">저장했습니다</span>' : ''
 
 export function dailyPage({ date, logs, available, hasTasks, skip, msg, saved }) {
   const body = `
@@ -348,8 +349,8 @@ ${notice(msg, msgKind)}
 
 <div class="card">
   <div class="tabs">
-    <a class="btn${kind === 'daily' ? '' : ' ghost'}" href="/reports?kind=daily&date=${date}">일일 업무 보고서</a>
-    <a class="btn${kind === 'weekly' ? ' alt' : ' ghost'}" href="/reports?kind=weekly&date=${date}">주간업무 보고서</a>
+    <a class="${kind === 'daily' ? 'on' : ''}" href="/reports?kind=daily&date=${date}">일일</a>
+    <a class="${kind === 'weekly' ? 'on' : ''}" href="/reports?kind=weekly&date=${date}">주간</a>
   </div>
   <form method="get" action="/reports" class="row" style="margin-bottom:9px">
     <input type="hidden" name="kind" value="${kind}">
