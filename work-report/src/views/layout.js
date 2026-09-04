@@ -16,12 +16,19 @@ const NAV = [
 ]
 
 
-/** 브라우저 탭·즐겨찾기 아이콘. 보고서의 진행률 막대를 본뜬 모양. */
+/**
+ * 브라우저 탭·즐겨찾기 아이콘. 글줄이 담긴 문서 모양.
+ * 16px로 줄어들면 안쪽 글줄은 뭉개지고 문서 실루엣만 남는다 — 그 상태에서도
+ * 알아볼 수 있도록 여백과 모서리를 넉넉히 잡았다.
+ */
+const ICON_COLOR = '#c0392b'
 export const FAVICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-<rect width="32" height="32" rx="7" fill="#0a7c6e"/>
-<rect x="6.5" y="18" width="5" height="8" rx="1.6" fill="#ffffff" opacity=".6"/>
-<rect x="13.5" y="12.5" width="5" height="13.5" rx="1.6" fill="#ffffff" opacity=".8"/>
-<rect x="20.5" y="7" width="5" height="19" rx="1.6" fill="#ffffff"/>
+<rect width="32" height="32" rx="7" fill="${ICON_COLOR}"/>
+<path d="M8 6.5a2 2 0 0 1 2-2h8.5L24 10v15.5a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2z" fill="#ffffff"/>
+<path d="M18.5 4.5 24 10h-4a1.5 1.5 0 0 1-1.5-1.5z" fill="${ICON_COLOR}" opacity=".3"/>
+<rect x="11.3" y="13" width="9.4" height="2" rx="1" fill="${ICON_COLOR}" opacity=".6"/>
+<rect x="11.3" y="17.2" width="9.4" height="2" rx="1" fill="${ICON_COLOR}" opacity=".6"/>
+<rect x="11.3" y="21.4" width="5.6" height="2" rx="1" fill="${ICON_COLOR}" opacity=".6"/>
 </svg>`
 
 const HEAD_ICON = '<link rel="icon" href="/favicon.svg" type="image/svg+xml">'
