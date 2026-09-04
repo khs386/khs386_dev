@@ -67,12 +67,19 @@ npm run dev                        # http://localhost:3000
 3. 환경변수를 `.env.local.example` 대로 등록합니다.
 4. `vercel.json`의 cron이 자동 등록됩니다.
    Vercel 서버는 UTC로 돌기 때문에 KST 기준 시각에서 9시간을 뺀 값이 들어 있습니다.
-   - 일일: `0 9 * * 1-5` → 평일 18:00 KST
+   - 일일: `0 9 * * *` → 매일 18:00 KST (주말·공휴일은 코드가 건너뜁니다)
    - 주간: `0 8 * * 5` → 금요일 17:00 KST
 
-> Hobby 플랜은 cron이 하루 1회로 제한됩니다. 두 개를 다 쓰려면 Pro로 올리거나,
-> GitHub Actions에서 `/api/cron/daily`·`/api/cron/weekly`를 호출하세요.
-> 두 경로 모두 `CRON_SECRET`을 `Authorization: Bearer <값>` 으로 확인합니다.
+Hobby 플랜은 **cron 하나가 하루 한 번까지** 도는 제한이 있습니다. 위 두 일정은 각각
+하루 1회·주 1회라서 무료 요금제로 둘 다 동작합니다. 다만 Hobby에서는 지정한 **시(hour)
+안의 아무 때나** 실행되므로, 18:00이 아니라 18:40에 만들어질 수 있습니다.
+
+주말 판정을 cron 식(`* * 1-5`)에 맡기지 않고 코드에서 하는 이유가 있습니다. Hobby의
+"하루 한 번" 검사에 걸리지 않는 가장 단순한 식을 쓰면서, 공휴일까지 같은 자리에서
+처리하기 위해서입니다. 공휴일 목록은 `settings` 표에 있어 앱에서 고칠 수 있습니다.
+
+분 단위로 정확한 시각이 필요하면 GitHub Actions에서 `/api/cron/daily`·`/api/cron/weekly`를
+호출하세요. 두 경로 모두 `CRON_SECRET`을 `Authorization: Bearer <값>` 으로 확인합니다.
 
 ## 결과물이 달라지지 않게 하는 장치
 
