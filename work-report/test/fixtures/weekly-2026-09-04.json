@@ -1,0 +1,21 @@
+{
+  "date": "2026-09-04",
+  "author": "초등콘텐츠사업부 권호상",
+  "shortAuthor": "권호상",
+  "prev": [
+    { "workType": "꼬마시리즈 개발", "title": "꼬마생각 샘플권 감수 진행", "status": "완료", "progress": 100, "dueDate": "2026-09-04", "note": "", "output": "" },
+    { "workType": "꼬마시리즈 개발", "title": "꼬마생각 샘플권 제작 준비", "status": "진행", "progress": 90, "dueDate": "2026-09-07", "note": "", "output": "" },
+    { "workType": "꼬마시리즈 개발", "title": "꼬마일력 월별 콘텐츠 작성", "status": "진행", "progress": 50, "dueDate": "2026-09-11", "note": "", "output": "" },
+    { "workType": "꼬마시리즈 개발", "title": "꼬마생각 본문 교정교열", "status": "진행", "progress": 10, "dueDate": "2026-09-30", "note": "", "output": "" }
+  ],
+  "plan": [
+    { "workType": "꼬마시리즈 개발", "title": "꼬마생각 샘플권 데이터 송고", "dueDate": "2026-09-08", "note": "" },
+    { "workType": "꼬마시리즈 개발", "title": "꼬마생각 샘플권 인쇄 감리", "dueDate": "2026-09-10", "note": "" },
+    { "workType": "꼬마시리즈 개발", "title": "꼬마생각 본문 교정교열", "dueDate": "2026-09-30", "note": "" }
+  ],
+  "series": [
+    { "name": "꼬마생각뒤집기", "progress": 79 },
+    { "name": "꼬마역사뒤집기", "progress": 40 },
+    { "name": "꼬마 일력", "progress": 62 }
+  ]
+}
