@@ -18,6 +18,7 @@ footer{margin-top:40px;padding-top:18px;border-top:1px solid #dde5e3;color:#8b9a
 const shell = (title, body) => `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <title>${title} · 업무보고서</title><style>${STYLE}</style></head>
 <body><main>${body}
 <footer><a href="/">업무보고서</a> · <a href="/privacy">개인정보처리방침</a> · <a href="/terms">이용약관</a></footer>

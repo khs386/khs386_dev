@@ -15,6 +15,17 @@ const NAV = [
   ['/reports', '보고서'],
 ]
 
+
+/** 브라우저 탭·즐겨찾기 아이콘. 보고서의 진행률 막대를 본뜬 모양. */
+export const FAVICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+<rect width="32" height="32" rx="7" fill="#0a7c6e"/>
+<rect x="6.5" y="18" width="5" height="8" rx="1.6" fill="#ffffff" opacity=".6"/>
+<rect x="13.5" y="12.5" width="5" height="13.5" rx="1.6" fill="#ffffff" opacity=".8"/>
+<rect x="20.5" y="7" width="5" height="19" rx="1.6" fill="#ffffff"/>
+</svg>`
+
+const HEAD_ICON = '<link rel="icon" href="/favicon.svg" type="image/svg+xml">'
+
 const CSS = `
 :root{
   --ground:#eef3f1;--surface:#fff;--surface-2:#f4f8f6;--line:#dae4e1;--line-soft:#e8efed;
@@ -103,6 +114,7 @@ export function page({ title, path, body, narrow }) {
   return `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+${HEAD_ICON}
 <title>${esc(title)} · 업무보고서</title><style>${CSS}</style></head>
 <body>
 <nav class="top"><div class="inner">
@@ -121,6 +133,7 @@ export function loginPage(message) {
   return `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+${HEAD_ICON}
 <title>로그인 · 업무보고서</title><style>${CSS}</style></head>
 <body><main class="auth"><div class="card">
 <h1 style="margin:0 0 6px">📋 업무보고서</h1>

@@ -8,7 +8,7 @@ import {
   todayKST, skipReason, generateReport, filenameFor,
 } from './lib/reports.js'
 import { weekStart, dday } from './lib/report/format.js'
-import { loginPage } from './views/layout.js'
+import { loginPage, FAVICON } from './views/layout.js'
 import { privacyPage, termsPage } from './views/legal.js'
 import {
   todayPage, tasksPage, dailyPage, weeklyPage, seriesPage, reportsPage,
@@ -24,6 +24,17 @@ const back = (c, path, msg) =>
 const dateOr = (v, fallback) => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : fallback)
 
 /* ── 로그인 ─────────────────────────────────────────────── */
+
+// 아이콘과 약관 페이지는 로그인 없이 열린다.
+app.get('/favicon.svg', (c) =>
+  new Response(FAVICON, {
+    headers: {
+      'Content-Type': 'image/svg+xml; charset=utf-8',
+      'Cache-Control': 'public, max-age=86400',
+    },
+  }))
+// 크롬이 직접 찾는 경로. 내용은 없다고 알려 주면 위 <link>를 따른다.
+app.get('/favicon.ico', () => new Response(null, { status: 204 }))
 
 // 구글 OAuth 동의 화면 게시에 필요한 공개 페이지. 로그인 없이 열린다.
 app.get('/privacy', (c) => html(c, privacyPage(c.env)))
@@ -49,7 +60,7 @@ app.post('/logout', (c) => {
 })
 
 // 로그인 화면 말고는 전부 확인한다.
-const PUBLIC = ['/login', '/privacy', '/terms']
+const PUBLIC = ['/login', '/privacy', '/terms', '/favicon.svg', '/favicon.ico']
 app.use('*', async (c, next) => {
   if (PUBLIC.includes(c.req.path)) return next()
   if (!(await isLoggedIn(c.req.raw, c.env))) return c.redirect('/login')
