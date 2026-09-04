@@ -1,68 +1,45 @@
 // 구글 드라이브 업로드.
-// 워커스는 Node가 아니라 브라우저에 가까운 환경이라 node:crypto를 못 쓴다.
-// 서비스 계정 JWT를 WebCrypto로 직접 서명한다.
+//
+// 서비스 계정이 아니라 "사용자 권한 위임"(OAuth refresh token) 방식을 쓴다.
+// 서비스 계정은 저장 공간이 0이라 개인 드라이브에 파일을 만들 수 없다
+// (Service Accounts do not have storage quota). 사용자 토큰으로 올리면
+// 파일이 사용자 소유가 되고 개인 드라이브 폴더에 그대로 저장된다.
+//
+// 필요한 값 (wrangler secret):
+//   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, GOOGLE_DRIVE_FOLDER_ID
+// refresh token은 scripts/get-google-token.mjs 로 한 번만 받아 둔다.
 
-const SCOPE = 'https://www.googleapis.com/auth/drive.file'
-const enc = new TextEncoder()
-
-function b64url(input) {
-  const bytes = typeof input === 'string' ? enc.encode(input) : new Uint8Array(input)
-  let s = ''
-  for (const b of bytes) s += String.fromCharCode(b)
-  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-}
-
-/** PEM 본문을 꺼내 ArrayBuffer로 바꾼다. */
-function pemToBuffer(pem) {
-  const body = pem
-    .replace(/\\n/g, '\n')
-    .replace(/-----BEGIN [^-]+-----/, '')
-    .replace(/-----END [^-]+-----/, '')
-    .replace(/\s+/g, '')
-  const bin = atob(body)
-  const buf = new Uint8Array(bin.length)
-  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i)
-  return buf.buffer
-}
+const TOKEN_URL = 'https://oauth2.googleapis.com/token'
 
 export function driveConfigured(env) {
   return Boolean(
-    env.GOOGLE_SERVICE_ACCOUNT_EMAIL && env.GOOGLE_PRIVATE_KEY && env.GOOGLE_DRIVE_FOLDER_ID
+    env.GOOGLE_CLIENT_ID &&
+      env.GOOGLE_CLIENT_SECRET &&
+      env.GOOGLE_REFRESH_TOKEN &&
+      env.GOOGLE_DRIVE_FOLDER_ID
   )
 }
 
+/** refresh token으로 짧게 쓰는 access token을 받아 온다. */
 async function accessToken(env) {
-  const now = Math.floor(Date.now() / 1000)
-  const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
-  const claim = b64url(
-    JSON.stringify({
-      iss: env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      scope: SCOPE,
-      aud: 'https://oauth2.googleapis.com/token',
-      exp: now + 3600,
-      iat: now,
-    })
-  )
-  const key = await crypto.subtle.importKey(
-    'pkcs8',
-    pemToBuffer(env.GOOGLE_PRIVATE_KEY),
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, enc.encode(`${header}.${claim}`))
-  const jwt = `${header}.${claim}.${b64url(sig)}`
-
-  const res = await fetch('https://oauth2.googleapis.com/token', {
+  const res = await fetch(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: jwt,
+      client_id: env.GOOGLE_CLIENT_ID,
+      client_secret: env.GOOGLE_CLIENT_SECRET,
+      refresh_token: env.GOOGLE_REFRESH_TOKEN,
+      grant_type: 'refresh_token',
     }),
   })
   const json = await res.json()
-  if (!res.ok) throw new Error(`구글 토큰 발급 실패: ${json.error_description || json.error}`)
+  if (!res.ok) {
+    const hint =
+      json.error === 'invalid_grant'
+        ? ' (연결이 끊겼습니다. scripts/get-google-token.mjs 로 다시 받아 등록하세요.)'
+        : ''
+    throw new Error(`구글 토큰 발급 실패: ${json.error_description || json.error}${hint}`)
+  }
   return json.access_token
 }
 
@@ -87,13 +64,7 @@ export async function uploadHtml(env, filename, html) {
   const token = await accessToken(env)
   const existing = await findExisting(token, folderId, filename)
 
-  const meta = existing
-    ? { name: filename }
-    : {
-        name: filename,
-        parents: [folderId],
-        ...(env.GOOGLE_DRIVE_ID ? { driveId: env.GOOGLE_DRIVE_ID } : {}),
-      }
+  const meta = existing ? { name: filename } : { name: filename, parents: [folderId] }
 
   const boundary = 'wr' + crypto.randomUUID().replace(/-/g, '')
   const body =

@@ -27,6 +27,7 @@ SHORT_AUTHOR = "권호상"
 # 아래 값들은 wrangler secret put 으로 넣는다 (파일에 적지 않는다):
 #   APP_PASSWORD            앱 로그인 비밀번호
 #   SESSION_SECRET          쿠키 서명용 임의 문자열
-#   GOOGLE_SERVICE_ACCOUNT_EMAIL
-#   GOOGLE_PRIVATE_KEY
+#   GOOGLE_CLIENT_ID
+#   GOOGLE_CLIENT_SECRET
+#   GOOGLE_REFRESH_TOKEN
 #   GOOGLE_DRIVE_FOLDER_ID

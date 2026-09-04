@@ -66,8 +66,9 @@ npx wrangler secret put SESSION_SECRET    # 쿠키 서명용 임의 문자열 (�
 구글 드라이브에 저장하려면 아래 셋도 넣습니다. 준비 방법은 다음 절에 있습니다.
 
 ```bash
-npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_EMAIL
-npx wrangler secret put GOOGLE_PRIVATE_KEY
+npx wrangler secret put GOOGLE_CLIENT_ID
+npx wrangler secret put GOOGLE_CLIENT_SECRET
+npx wrangler secret put GOOGLE_REFRESH_TOKEN
 npx wrangler secret put GOOGLE_DRIVE_FOLDER_ID
 ```
 
@@ -75,16 +76,39 @@ npx wrangler secret put GOOGLE_DRIVE_FOLDER_ID
 
 ### 4. 구글 드라이브 준비
 
+보고서를 **본인 계정 권한으로** 드라이브에 올립니다. 서비스 계정은 저장 공간이 없어
+개인 드라이브에 파일을 만들 수 없으므로(`Service Accounts do not have storage quota`)
+사용자 권한 위임(OAuth) 방식을 씁니다. 올라간 파일은 본인 소유가 됩니다.
+
 1. 드라이브에서 보고서를 담을 폴더를 만듭니다. 주소의 `folders/` 뒤가 **폴더 ID**입니다.
 2. [Google Cloud 콘솔](https://console.cloud.google.com)에서 프로젝트를 만들고 **Google Drive API**를 켭니다.
-3. **서비스 계정**을 만들고 JSON 키를 내려받습니다. 역할(Role)은 지정하지 않아도 됩니다.
-4. JSON의 `client_email`과 `private_key`를 위 secret에 넣습니다.
-   `private_key`는 `-----BEGIN PRIVATE KEY-----`부터 끝까지 통째로, 바깥 큰따옴표는 빼고 넣습니다.
-5. **1번 폴더를 `client_email` 주소에 '편집자'로 공유합니다.**
+3. **OAuth 동의 화면**을 설정합니다.
+   - User Type: **외부(External)**
+   - 앱 이름·지원 이메일만 채우면 됩니다
+   - 범위(Scope)는 추가하지 않아도 됩니다
+   - 설정 후 **게시 상태를 '프로덕션'으로 바꾸세요.** '테스트' 상태로 두면
+     연결이 **7일마다 끊깁니다.**
+4. **사용자 인증 정보 → OAuth 클라이언트 ID**를 만듭니다.
+   - 애플리케이션 유형: **데스크톱 앱**
+   - 만들면 **클라이언트 ID**와 **클라이언트 보안 비밀**이 나옵니다
+5. 아래 명령으로 접근 권한을 한 번 받아 그대로 등록합니다.
 
-> 5번을 빠뜨리면 업로드가 실패합니다. 서비스 계정은 자기 저장 공간이 없어서,
-> 사람이 폴더를 빌려줘야만 그 안에 파일을 만들 수 있습니다.
-> `File not found` 오류가 나면 대개 여기입니다.
+```bash
+node scripts/get-google-token.mjs <클라이언트_ID> <클라이언트_보안_비밀> \
+  | npx wrangler secret put GOOGLE_REFRESH_TOKEN
+```
+
+브라우저가 열리면 본인 구글 계정으로 로그인하고 허용하면 됩니다.
+"이 앱은 확인되지 않았습니다" 경고가 나오면 **고급 → 이동**을 누르세요.
+본인이 만든 앱이고, 권한은 **이 앱이 만든 파일만** 다루는 범위(`drive.file`)로 한정됩니다.
+
+나머지 세 개도 등록합니다.
+
+```bash
+npx wrangler secret put GOOGLE_CLIENT_ID
+npx wrangler secret put GOOGLE_CLIENT_SECRET
+npx wrangler secret put GOOGLE_DRIVE_FOLDER_ID
+```
 
 ### 5. 배포
 
@@ -160,7 +184,7 @@ src/
     db.js           D1 접근
     reports.js      DB 행 → 렌더러 입력 → 저장
     auth.js         비밀번호 + 서명 쿠키
-    drive.js        구글 드라이브 업로드 (WebCrypto로 JWT 서명)
+    drive.js        구글 드라이브 업로드 (사용자 OAuth)
   views/            화면 HTML
 migrations/         D1 스키마
 test/               골든 파일과 테스트
