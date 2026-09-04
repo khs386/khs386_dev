@@ -414,8 +414,12 @@ ${
     ? `<div class="card">
         <div class="chead"><h2>미리보기</h2><span class="count mono">${esc(report.filename)}</span></div>
         <iframe class="preview" title="보고서 미리보기" src="/reports/preview?kind=${kind}&date=${date}"></iframe>
-        ${report.drive_link ? `<p class="count" style="margin-top:9px">
-          드라이브에 저장됨 · <a href="${esc(report.drive_link)}" target="_blank" rel="noreferrer">열기</a></p>` : ''}
+        <p class="count" style="margin-top:10px">
+          <a href="/reports/preview?kind=${kind}&date=${date}" target="_blank" rel="noreferrer">새 탭에서 크게 보기</a>
+          ${report.drive_link
+            ? ` · 드라이브에 저장됨 <a href="${esc(report.drive_link)}" target="_blank" rel="noreferrer">파일 열기</a>`
+            : ''}
+        </p>
       </div>`
     : '<p class="empty">아직 만들어진 보고서가 없습니다. 날짜를 고르고 "보고서 만들기"를 누르세요.</p>'
 }
@@ -428,6 +432,8 @@ ${
           ${tag(r.kind === 'daily' ? '일일' : '주간')}
           <span class="t mono" style="font-size:13px">${esc(r.filename)}</span>
           ${tag(r.report_date)}
+          <a class="tag" href="/reports/preview?kind=${r.kind}&date=${r.report_date}"
+             target="_blank" rel="noreferrer">보기</a>
           ${r.drive_link ? `<a class="tag" href="${esc(r.drive_link)}" target="_blank" rel="noreferrer">드라이브</a>` : ''}
           <span class="spacer"></span>
           <a class="btn ghost sm" href="/reports?kind=${r.kind}&date=${r.report_date}">열기</a>
