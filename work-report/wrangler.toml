@@ -23,6 +23,8 @@ crons = [
 [vars]
 AUTHOR = "초등콘텐츠사업부 권호상"
 SHORT_AUTHOR = "권호상"
+# 개인정보처리방침 페이지에 표시할 문의 이메일. 비워 두면 표시하지 않는다.
+# SUPPORT_EMAIL = "you@example.com"
 
 # 아래 값들은 wrangler secret put 으로 넣는다 (파일에 적지 않는다):
 #   APP_PASSWORD            앱 로그인 비밀번호
