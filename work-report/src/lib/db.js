@@ -192,13 +192,56 @@ export async function listSeries(db) {
   return results || []
 }
 
+/** 화면에서 고를 수 있는 색. 보고서 막대에 그대로 쓰인다. */
+export const SERIES_PALETTE = [
+  ['파랑', '#378ADD'], ['주황', '#e67e22'], ['보라', '#9b59b6'],
+  ['초록', '#639922'], ['빨강', '#e74c3c'], ['청록', '#0a7c6e'],
+  ['남색', '#34495e'], ['분홍', '#e84393'],
+]
+
+export async function createSeries(db, name, color) {
+  const clean = String(name || '').trim()
+  if (!clean) return { error: '시리즈 이름을 입력해 주세요.' }
+  const dup = await db.prepare('select name from series_progress where name = ?').bind(clean).first()
+  if (dup) return { error: `"${clean}" 은(는) 이미 있습니다.` }
+  const last = await db.prepare('select max(sort_order) as m from series_progress').first()
+  await db
+    .prepare('insert into series_progress (name, total_progress, sort_order, color) values (?, 0, ?, ?)')
+    .bind(clean, (last?.m || 0) + 1, color || SERIES_PALETTE[0][1])
+    .run()
+  return { ok: true, name: clean }
+}
+
+export async function deleteSeries(db, name) {
+  await db.prepare('delete from series_progress where name = ?').bind(name).run()
+}
+
+/** 위아래로 한 칸 옮긴다. */
+export async function moveSeries(db, name, dir) {
+  const row = await db.prepare('select * from series_progress where name = ?').bind(name).first()
+  if (!row) return
+  const neighbour = await db
+    .prepare(
+      dir < 0
+        ? 'select * from series_progress where sort_order < ? order by sort_order desc limit 1'
+        : 'select * from series_progress where sort_order > ? order by sort_order limit 1'
+    )
+    .bind(row.sort_order)
+    .first()
+  if (!neighbour) return
+  await db.batch([
+    db.prepare('update series_progress set sort_order = ? where name = ?').bind(neighbour.sort_order, row.name),
+    db.prepare('update series_progress set sort_order = ? where name = ?').bind(row.sort_order, neighbour.name),
+  ])
+}
+
 export async function saveSeries(db, entries) {
   const now = new Date().toISOString()
   await db.batch(
     entries.map((e) =>
       db
-        .prepare('update series_progress set total_progress = ?, updated_at = ? where name = ?')
-        .bind(Math.max(0, Math.min(100, Number(e.progress) || 0)), now, e.name)
+        .prepare('update series_progress set total_progress = ?, color = ?, updated_at = ? where name = ?')
+        .bind(Math.max(0, Math.min(100, Number(e.progress) || 0)), e.color || null, now, e.name)
     )
   )
 }

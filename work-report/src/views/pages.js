@@ -307,34 +307,73 @@ ${section('금주 예정')}`
 
 /* ── 시리즈 ─────────────────────────────────────────────── */
 
-export function seriesPage({ series, msg }) {
+export function seriesPage({ series, palette, msg }) {
+  // 폭을 잡아 주지 않으면 한 줄에 안 들어가고 아래로 접힌다
+  const colorSelect = (name, value) =>
+    `<select name="color" style="width:104px" aria-label="${esc(name)} 색">` +
+    palette
+      .map(([label, hex]) =>
+        `<option value="${hex}"${hex === value ? ' selected' : ''}>${label}</option>`)
+      .join('') +
+    `</select>`
+
   const body = `
 <div class="head"><div><h1>시리즈별 개발 현황</h1>
-  <p>보고서 오른쪽 세로 막대에 쓰이는 총 진행률입니다. 노션 화면의 값을 그대로 입력하세요.</p></div></div>
+  <p>보고서 오른쪽 세로 막대에 쓰이는 총 진행률입니다.</p></div></div>
 ${notice(msg)}
+
 <div class="card">
-  <form method="post" action="/series">
-    ${series.map((s) => `
-    <div class="fld" style="margin-bottom:12px"><label>${esc(s.name)}</label>
-      <div class="row">
-        <input type="hidden" name="name" value="${esc(s.name)}">
-        <input class="grow" type="number" name="progress" min="0" max="100" value="${s.total_progress}">
-        <span class="count">${s.updated_at ? s.updated_at.slice(0, 10) + ' 갱신' : '미입력'}</span>
-      </div></div>`).join('')}
-    <button class="btn">저장</button>
+  <div class="chead"><h2>진행률</h2><span class="count">${series.length}개</span></div>
+  ${
+    series.length
+      ? `<form method="post" action="/series">
+    ${series.map((s, i) => `
+    <div class="item">
+      <input type="hidden" name="name" value="${esc(s.name)}">
+      <span class="t">${esc(s.name)}</span>
+      <input type="number" name="progress" min="0" max="100" value="${s.total_progress}"
+             style="width:88px" aria-label="${esc(s.name)} 진행률">
+      ${colorSelect(s.name, s.color)}
+      <span class="count">${s.updated_at ? s.updated_at.slice(0, 10) : '미입력'}</span>
+      <button class="btn ghost sm" formaction="/series/move" name="move" value="${esc(s.name)}:-1"
+              formnovalidate${i === 0 ? ' disabled' : ''}>↑</button>
+      <button class="btn ghost sm" formaction="/series/move" name="move" value="${esc(s.name)}:1"
+              formnovalidate${i === series.length - 1 ? ' disabled' : ''}>↓</button>
+      <button class="btn danger sm" formaction="/series/delete" name="remove" value="${esc(s.name)}"
+              formnovalidate
+              onclick="return confirm('${esc(s.name)} 을(를) 지울까요? 보고서 막대에서 빠집니다.')">삭제</button>
+    </div>`).join('')}
+    <div class="row" style="margin-top:16px"><button class="btn">저장</button></div>
+  </form>`
+      : '<p class="empty">시리즈가 없습니다. 아래에서 추가하세요.</p>'
+  }
+</div>
+
+<div class="card">
+  <div class="chead"><h2>시리즈 추가</h2></div>
+  <form method="post" action="/series/new" class="row">
+    <input name="name" class="grow" placeholder="예: 꼬마과학뒤집기" required>
+    ${colorSelect('새 시리즈', palette[0][1])}
+    <button class="btn">추가</button>
   </form>
 </div>
+
 <div class="card">
-  <div class="chead"><h2>미리보기</h2></div>
-  <div class="bars">
+  <div class="chead"><h2>미리보기</h2>
+    <span class="count">보고서에 이렇게 들어갑니다</span></div>
+  ${
+    series.length
+      ? `<div class="bars">
     ${series.map((s) => {
-      const c = SERIES_COLOR[s.name] || '#378ADD'
+      const c = s.color || SERIES_COLOR[s.name] || '#378ADD'
       return `<div class="bar">
         <div class="v" style="color:${c}">${s.total_progress}%</div>
         <div class="stem" style="background:${c};height:${barHeight(s.total_progress)}px"></div>
         <div class="n">${esc(s.name)}</div></div>`
     }).join('')}
-  </div>
+  </div>`
+      : '<p class="empty">표시할 시리즈가 없습니다.</p>'
+  }
 </div>`
   return page({ title: '시리즈', path: '/series', body, narrow: true })
 }

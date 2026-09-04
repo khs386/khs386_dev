@@ -306,14 +306,42 @@ app.post('/weekly/carry-over', async (c) => {
 /* ── 시리즈 ─────────────────────────────────────────────── */
 
 app.get('/series', async (c) =>
-  html(c, seriesPage({ series: await db.listSeries(c.env.DB), msg: c.req.query('msg') })))
+  html(c, seriesPage({
+    series: await db.listSeries(c.env.DB),
+    palette: db.SERIES_PALETTE,
+    msg: c.req.query('msg'),
+  })))
 
 app.post('/series', async (c) => {
   const form = await c.req.formData()
   const names = form.getAll('name')
   const values = form.getAll('progress')
-  await db.saveSeries(c.env.DB, names.map((name, i) => ({ name, progress: values[i] })))
+  const colors = form.getAll('color')
+  await db.saveSeries(
+    c.env.DB,
+    names.map((name, i) => ({ name, progress: values[i], color: colors[i] }))
+  )
   return back(c, '/series', '저장했습니다.')
+})
+
+app.post('/series/new', async (c) => {
+  const form = await c.req.formData()
+  const { error, name } = await db.createSeries(c.env.DB, form.get('name'), form.get('color'))
+  return back(c, '/series', error || `"${name}"을(를) 추가했습니다.`)
+})
+
+app.post('/series/delete', async (c) => {
+  const form = await c.req.formData()
+  const name = form.get('remove')
+  if (name) await db.deleteSeries(c.env.DB, name)
+  return back(c, '/series', name ? `"${name}"을(를) 지웠습니다.` : '')
+})
+
+app.post('/series/move', async (c) => {
+  const form = await c.req.formData()
+  const [name, dir] = String(form.get('move') || '').split(':')
+  if (name) await db.moveSeries(c.env.DB, name, Number(dir) || 1)
+  return c.redirect('/series')
 })
 
 /* ── 보고서 ─────────────────────────────────────────────── */

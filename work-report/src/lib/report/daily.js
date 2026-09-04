@@ -81,16 +81,23 @@ function seriesCell(s, width) {
   )
 }
 
-/** 시리즈 목록을 고정 순서로 정렬하고 고정색을 붙인다 */
+/**
+ * 시리즈 목록을 보고서에 쓸 모양으로 다듬는다.
+ * 순서는 넘어온 그대로 쓰고, 색이 지정돼 있지 않으면 기존 시리즈의 고정색을 쓴다.
+ * 어느 쪽도 없으면 순서대로 기본 색을 돌려 쓴다.
+ */
+const FALLBACK_COLORS = ['#378ADD', '#e67e22', '#9b59b6', '#639922', '#e74c3c', '#0a7c6e']
+
 export function normalizeSeries(series) {
-  const map = new Map((series || []).map((s) => [s.name, s]))
-  const ordered = []
-  for (const n of SERIES_ORDER) if (map.has(n)) ordered.push(map.get(n))
-  for (const s of series || []) if (!SERIES_ORDER.includes(s.name)) ordered.push(s)
-  return ordered.map((s) => ({
+  const list = (series || []).slice()
+  // 순서가 지정되지 않은 옛 호출을 위해, 알려진 시리즈는 원래 순서를 지킨다.
+  if (list.every((s) => SERIES_ORDER.includes(s.name))) {
+    list.sort((a, b) => SERIES_ORDER.indexOf(a.name) - SERIES_ORDER.indexOf(b.name))
+  }
+  return list.map((s, i) => ({
     name: s.name,
     progress: Number(s.progress) || 0,
-    color: SERIES_COLOR[s.name] || '#378ADD',
+    color: s.color || SERIES_COLOR[s.name] || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
   }))
 }
 
