@@ -9,6 +9,7 @@ import {
 } from './lib/reports.js'
 import { weekStart, dday } from './lib/report/format.js'
 import { loginPage } from './views/layout.js'
+import { privacyPage, termsPage } from './views/legal.js'
 import {
   todayPage, tasksPage, dailyPage, weeklyPage, seriesPage, reportsPage,
 } from './views/pages.js'
@@ -23,6 +24,10 @@ const back = (c, path, msg) =>
 const dateOr = (v, fallback) => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : fallback)
 
 /* ── 로그인 ─────────────────────────────────────────────── */
+
+// 구글 OAuth 동의 화면 게시에 필요한 공개 페이지. 로그인 없이 열린다.
+app.get('/privacy', (c) => html(c, privacyPage(c.env)))
+app.get('/terms', (c) => html(c, termsPage(c.env)))
 
 app.get('/login', (c) => html(c, loginPage(c.req.query('e'))))
 
@@ -44,8 +49,9 @@ app.post('/logout', (c) => {
 })
 
 // 로그인 화면 말고는 전부 확인한다.
+const PUBLIC = ['/login', '/privacy', '/terms']
 app.use('*', async (c, next) => {
-  if (c.req.path === '/login') return next()
+  if (PUBLIC.includes(c.req.path)) return next()
   if (!(await isLoggedIn(c.req.raw, c.env))) return c.redirect('/login')
   await next()
 })

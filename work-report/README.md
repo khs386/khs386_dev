@@ -82,10 +82,15 @@ npx wrangler secret put GOOGLE_DRIVE_FOLDER_ID
 
 1. 드라이브에서 보고서를 담을 폴더를 만듭니다. 주소의 `folders/` 뒤가 **폴더 ID**입니다.
 2. [Google Cloud 콘솔](https://console.cloud.google.com)에서 프로젝트를 만들고 **Google Drive API**를 켭니다.
-3. **OAuth 동의 화면**을 설정합니다.
+3. **OAuth 동의 화면**을 설정합니다. 배포된 앱 주소를 그대로 쓰면 됩니다.
+   앱에 `/privacy` 와 `/terms` 페이지가 들어 있어 로그인 없이 열립니다.
    - User Type: **외부(External)**
    - 앱 이름·지원 이메일만 채우면 됩니다
    - 범위(Scope)는 추가하지 않아도 됩니다
+   - 브랜딩 화면에서 아래 세 가지를 채워야 게시가 열립니다
+     - 애플리케이션 홈페이지: `https://work-report.<계정>.workers.dev`
+     - 개인정보처리방침 링크: 위 주소 + `/privacy`
+     - 승인된 도메인: `<계정>.workers.dev`
    - 설정 후 **게시 상태를 '프로덕션'으로 바꾸세요.** '테스트' 상태로 두면
      연결이 **7일마다 끊깁니다.**
 4. **사용자 인증 정보 → OAuth 클라이언트 ID**를 만듭니다.
@@ -185,7 +190,7 @@ src/
     reports.js      DB 행 → 렌더러 입력 → 저장
     auth.js         비밀번호 + 서명 쿠키
     drive.js        구글 드라이브 업로드 (사용자 OAuth)
-  views/            화면 HTML
+  views/            화면 HTML (legal.js는 로그인 없이 열리는 약관·방침 페이지)
 migrations/         D1 스키마
 test/               골든 파일과 테스트
 ```
