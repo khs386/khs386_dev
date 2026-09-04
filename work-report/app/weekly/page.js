@@ -90,15 +90,18 @@ export default function WeeklyPage() {
     const { data } = await supabase
       .from('weekly_items').select('*').eq('week_start', prevWs).eq('kind', '금주 예정')
     if (!data || data.length === 0) return setMessage('지난 주 금주 예정 항목이 없습니다.')
+    const already = new Set(byKind('전주 실적').map((r) => r.title))
+    const fresh = data.filter((d) => !already.has(d.title))
+    if (fresh.length === 0) return setMessage('이미 모두 가져온 항목입니다.')
     const base = byKind('전주 실적').length
     await supabase.from('weekly_items').insert(
-      data.map((d, n) => ({
+      fresh.map((d, n) => ({
         week_start: ws, kind: '전주 실적', task_id: d.task_id, title: d.title,
         work_type: d.work_type, status: '진행', progress: d.progress,
         due_date: d.due_date, note: '', output: '', sort_order: base + n,
       }))
     )
-    setMessage(`지난 주 예정 ${data.length}건을 전주 실적으로 가져왔습니다.`)
+    setMessage(`지난 주 예정 ${fresh.length}건을 전주 실적으로 가져왔습니다.`)
     load()
   }
 

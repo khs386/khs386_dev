@@ -6,13 +6,6 @@ import { supabase } from '../../lib/supabase'
 import { todayKST } from '../../lib/constants'
 import { koreanDate, koreanWeek } from '../../lib/report/format'
 
-/** 일일 보고서는 조각(fragment)이라 미리보기용 문서로 감싼다. */
-function previewDoc(kind, html) {
-  if (kind === 'weekly') return html
-  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"></head>` +
-    `<body style="margin:0;padding:40px 0;background:#fff;">${html}</body></html>`
-}
-
 async function authHeaders() {
   const { data } = await supabase.auth.getSession()
   return {
@@ -152,7 +145,7 @@ function ReportsInner() {
       {html ? (
         <div className="card">
           <div className="card-head"><h3>미리보기</h3><span className="muted">{filename}</span></div>
-          <iframe className="preview-frame" title="보고서 미리보기" srcDoc={previewDoc(kind, html)} />
+          <iframe className="preview-frame" title="보고서 미리보기" srcDoc={html} />
         </div>
       ) : (
         <p className="empty">아직 만들어진 보고서가 없습니다. 날짜를 고르고 "보고서 만들기"를 누르세요.</p>

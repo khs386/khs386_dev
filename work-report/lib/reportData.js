@@ -104,6 +104,22 @@ export function filenameFor(kind, date) {
   return kind === 'daily' ? `report_${date}.html` : `weekly_report_${date}.html`
 }
 
+/**
+ * 저장·전달용 문서로 감싼다.
+ * 일일 보고서는 표 조각이라 charset 선언이 없어, 파일로 내려받거나 드라이브에서 열면
+ * 한글이 깨진다. 보고서 내용은 그대로 두고 문서 껍데기만 씌운다.
+ * 주간 보고서는 이미 완결 문서라 손대지 않는다.
+ */
+export function wrapDocument(kind, html, date, title) {
+  if (kind !== 'daily') return html
+  const name = title || `일일 업무 보고서 ${date}`
+  return (
+    '<!DOCTYPE html>\n<html lang="ko"><head><meta charset="UTF-8">' +
+    `<title>${name}</title></head>\n` +
+    `<body style="margin:0;padding:40px 0;background:#ffffff;">\n${html}\n</body></html>`
+  )
+}
+
 /** 보고서를 만들어 reports 테이블에 저장하고 { html, filename }을 돌려준다. */
 export async function generateReport(sb, kind, date) {
   const data = kind === 'daily' ? await buildDailyData(sb, date) : await buildWeeklyData(sb, date)
@@ -111,10 +127,13 @@ export async function generateReport(sb, kind, date) {
     kind === 'daily'
       ? data.tasks.length === 0
       : data.prev.length === 0 && data.plan.length === 0
-  const html = kind === 'daily' ? renderDaily(data) : renderWeekly(data)
+  const body = kind === 'daily' ? renderDaily(data) : renderWeekly(data)
+  const html = wrapDocument(kind, body, date)
   const filename = filenameFor(kind, date)
-  await sb
-    .from('reports')
-    .upsert({ kind, report_date: date, filename, html }, { onConflict: 'kind,report_date' })
+  // 다시 만들면 이전 업로드 링크는 더 이상 이 내용을 가리키지 않는다. 같이 지운다.
+  await sb.from('reports').upsert(
+    { kind, report_date: date, filename, html, drive_file_id: null, drive_link: null },
+    { onConflict: 'kind,report_date' }
+  )
   return { html, filename, empty, data }
 }

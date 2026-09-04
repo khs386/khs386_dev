@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-import { buildDailyData, buildWeeklyData, isSkipDay, filenameFor } from '../lib/reportData.js'
+import { buildDailyData, buildWeeklyData, isSkipDay, filenameFor, wrapDocument } from '../lib/reportData.js'
 import { renderDaily } from '../lib/report/daily.js'
 import { renderWeekly } from '../lib/report/weekly.js'
 
@@ -157,4 +157,19 @@ test('주말과 공휴일은 자동 생성에서 건너뛴다', () => {
 test('파일 이름 규칙이 기존 스킬과 같다', () => {
   assert.equal(filenameFor('daily', '2026-09-04'), 'report_2026-09-04.html')
   assert.equal(filenameFor('weekly', '2026-09-04'), 'weekly_report_2026-09-04.html')
+})
+
+test('저장되는 일일 보고서는 한글이 깨지지 않도록 문서로 감싼다', () => {
+  const body = read('golden/report_2026-09-04.html')
+  const doc = wrapDocument('daily', body, '2026-09-04')
+  assert.ok(doc.startsWith('<!DOCTYPE html>'))
+  assert.ok(doc.includes('<meta charset="UTF-8">'))
+  assert.ok(doc.includes('<title>일일 업무 보고서 2026-09-04</title>'))
+  // 보고서 내용 자체는 한 글자도 손대지 않는다
+  assert.ok(doc.includes(body))
+})
+
+test('주간 보고서는 이미 완결 문서라 감싸지 않는다', () => {
+  const doc = read('golden/weekly_report_2026-09-04.html')
+  assert.equal(wrapDocument('weekly', doc, '2026-09-04'), doc)
 })

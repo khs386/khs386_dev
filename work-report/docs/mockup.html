@@ -1,0 +1,683 @@
+<title>업무보고서 화면 목업</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#eef3f1; --surface:#ffffff; --surface-2:#f5f8f7; --line:#dae4e1; --line-soft:#e8efed;
+  --ink:#15201e; --ink-2:#42544f; --ink-3:#7b8f89;
+  --accent:#0a7c6e; --accent-soft:#e2f0ec; --alt:#6b5bb8; --alt-soft:#ece8f7;
+  --done:#639922; --going:#378ADD; --warn:#e67e22; --urgent:#e74c3c; --idle:#8b9a95;
+  --shadow:0 1px 2px rgba(12,38,32,.05), 0 8px 24px -12px rgba(12,38,32,.18);
+  --r:12px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0d1412; --surface:#161f1d; --surface-2:#1c2725; --line:#283532; --line-soft:#212c2a;
+    --ink:#e3ebe8; --ink-2:#a6b7b2; --ink-3:#7b8f89;
+    --accent:#4cbfa6; --accent-soft:#123029; --alt:#a595e8; --alt-soft:#221e39;
+    --done:#8cc63f; --going:#5aa5e8; --warn:#f0954a; --urgent:#f0685a; --idle:#7b8f89;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0d1412; --surface:#161f1d; --surface-2:#1c2725; --line:#283532; --line-soft:#212c2a;
+  --ink:#e3ebe8; --ink-2:#a6b7b2; --ink-3:#7b8f89;
+  --accent:#4cbfa6; --accent-soft:#123029; --alt:#a595e8; --alt-soft:#221e39;
+  --done:#8cc63f; --going:#5aa5e8; --warn:#f0954a; --urgent:#f0685a; --idle:#7b8f89;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:'IBM Plex Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+  font-size:15px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums}
+
+.page{max-width:1120px; margin:0 auto; padding:44px 22px 80px}
+
+/* ── 페이지 머리 ── */
+.eyebrow{
+  font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--accent); margin:0 0 12px;
+}
+h1{
+  font-family:'Gothic A1',sans-serif; font-weight:800; font-size:clamp(30px,4.4vw,44px);
+  line-height:1.15; letter-spacing:-.02em; margin:0 0 12px; text-wrap:balance;
+}
+.lede{margin:0; color:var(--ink-2); max-width:60ch; font-size:16px}
+.headnote{
+  margin:22px 0 0; padding:12px 16px; border-left:3px solid var(--accent);
+  background:var(--accent-soft); color:var(--ink-2); font-size:13.5px; max-width:66ch;
+  border-radius:0 8px 8px 0;
+}
+.headnote b{color:var(--ink); font-weight:600}
+
+/* ── 앱 프레임 ── */
+.frame{
+  margin:34px 0 0; background:var(--surface); border:1px solid var(--line);
+  border-radius:14px; box-shadow:var(--shadow); overflow:hidden;
+}
+.urlbar{
+  display:flex; align-items:center; gap:10px; padding:9px 14px;
+  background:var(--surface-2); border-bottom:1px solid var(--line);
+}
+.dots{display:flex; gap:6px}
+.dots i{width:9px; height:9px; border-radius:50%; background:var(--line); display:block}
+.url{
+  font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-3);
+  background:var(--surface); border:1px solid var(--line); border-radius:20px;
+  padding:3px 12px; flex:1; max-width:420px;
+}
+.url b{color:var(--ink-2); font-weight:500}
+
+/* 앱 내비게이션 */
+.appnav{
+  display:flex; align-items:center; gap:4px; flex-wrap:wrap;
+  padding:11px 16px; border-bottom:1px solid var(--line); background:var(--surface);
+}
+.brand{
+  font-family:'Gothic A1',sans-serif; font-weight:800; font-size:15px;
+  margin-right:12px; white-space:nowrap; letter-spacing:-.01em;
+}
+.navbtn{
+  font:inherit; font-size:13.5px; color:var(--ink-2); background:none; border:0;
+  padding:6px 11px; border-radius:8px; cursor:pointer; white-space:nowrap;
+}
+.navbtn:hover{background:var(--surface-2); color:var(--ink)}
+.navbtn[aria-current="page"]{background:var(--accent-soft); color:var(--accent); font-weight:600}
+.navbtn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.who{
+  margin-left:auto; font-family:'IBM Plex Mono',monospace;
+  font-size:11.5px; color:var(--ink-3);
+}
+
+.screen{padding:22px 20px 30px; background:var(--ground); min-height:520px}
+.screen[hidden]{display:none!important}
+
+/* 화면 머리 */
+.shead{display:flex; align-items:flex-end; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:16px}
+.shead h2{font-family:'Gothic A1',sans-serif; font-weight:700; font-size:20px; margin:0; letter-spacing:-.01em}
+.shead p{margin:2px 0 0; font-size:13px; color:var(--ink-3)}
+
+/* 카드 */
+.card{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  padding:16px 18px; margin-bottom:14px;
+}
+.chead{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px}
+.chead h3{font-family:'Gothic A1',sans-serif; font-weight:700; font-size:15px; margin:0}
+.count{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-3)}
+
+/* 줄 목록 */
+.rows{display:flex; flex-direction:column}
+.rw{
+  display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+  padding:11px 0; border-top:1px solid var(--line-soft);
+}
+.rw:first-child{border-top:0}
+.rw .t{font-weight:600; flex:1 1 190px; min-width:0}
+.rw .sub{font-size:12.5px; color:var(--ink-3); flex-basis:100%; margin:-4px 0 0}
+
+/* 상태 표시 */
+.pill{
+  font-size:11.5px; font-weight:600; padding:2.5px 10px; border-radius:20px;
+  color:#fff; white-space:nowrap; letter-spacing:.01em;
+}
+.tag{
+  font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:2.5px 9px;
+  border-radius:20px; background:var(--surface-2); color:var(--ink-2);
+  border:1px solid var(--line); white-space:nowrap;
+}
+.dday{font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:600}
+
+/* 버튼 */
+.btn{
+  font:inherit; font-size:13.5px; font-weight:600; padding:7px 14px; border:0;
+  border-radius:8px; background:var(--accent); color:#fff; cursor:pointer; white-space:nowrap;
+}
+.btn.ghost{background:var(--surface); color:var(--ink-2); border:1px solid var(--line)}
+.btn.alt{background:var(--alt)}
+.btn.sm{font-size:12.5px; padding:5px 10px}
+.btn:hover{filter:brightness(1.06)}
+.btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.btn[disabled]{opacity:.45; cursor:default}
+
+/* 입력 */
+.row{display:flex; gap:9px; align-items:center; flex-wrap:wrap}
+.grow{flex:1 1 200px}
+.fld{display:flex; flex-direction:column; gap:4px}
+.fld label{font-size:11.5px; color:var(--ink-3); letter-spacing:.01em}
+.inp{
+  font:inherit; font-size:13.5px; padding:7px 10px; border:1px solid var(--line);
+  border-radius:8px; background:var(--surface); color:var(--ink); width:100%;
+}
+.inp[readonly]{cursor:default}
+.inp:focus-visible{outline:2px solid var(--accent); outline-offset:-1px; border-color:var(--accent)}
+textarea.inp{min-height:78px; resize:vertical; line-height:1.7; font-size:13.5px}
+.grid4{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:12px}
+.datefield{font-family:'IBM Plex Mono',monospace; max-width:160px}
+
+/* 알림 줄 */
+.note{
+  display:flex; gap:9px; align-items:flex-start; font-size:13px;
+  padding:10px 14px; border-radius:10px; margin-bottom:14px;
+  background:var(--accent-soft); color:var(--ink-2);
+}
+.note.warn{background:color-mix(in srgb,var(--warn) 14%,var(--surface)); color:var(--ink-2)}
+.note b{color:var(--ink); font-weight:600}
+
+/* 시리즈 막대 */
+.bars{display:flex; align-items:flex-end; gap:28px; height:230px; padding:0 10px; margin-top:6px}
+.bar{flex:1; text-align:center; display:flex; flex-direction:column; justify-content:flex-end}
+.bar .v{font-family:'IBM Plex Mono',monospace; font-size:12.5px; font-weight:600; margin-bottom:6px}
+.bar .stem{width:56%; margin:0 auto; border-radius:7px 7px 0 0}
+.bar .n{font-size:12px; color:var(--ink-2); margin-top:7px}
+
+/* 진행률 바 */
+.prog{margin-bottom:14px}
+.prog .lab{display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:5px; font-size:13.5px; font-weight:600}
+.prog .pct{font-family:'IBM Plex Mono',monospace}
+.track{height:9px; border-radius:20px; background:var(--line-soft); overflow:hidden}
+.track span{display:block; height:100%; border-radius:20px}
+
+/* 보고서 미리보기 */
+.preview{
+  border:1px solid var(--line); border-radius:10px; overflow:hidden;
+  background:#fff; height:620px; position:relative;
+}
+.preview .scaler{
+  transform-origin:0 0; overflow:hidden; pointer-events:none;
+}
+/* 결과물은 가운데 정렬로 만들어져 있으나, 미리보기 창에서는 왼쪽에 붙인다 */
+.preview .scaler > table{margin:0!important}
+.previewnote{
+  font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-3); margin:8px 0 0;
+}
+
+/* 탭 */
+.tabs{display:flex; gap:7px; margin-bottom:14px; flex-wrap:wrap}
+.tab{
+  font:inherit; font-size:13.5px; font-weight:600; padding:7px 14px; border-radius:8px;
+  border:1px solid var(--line); background:var(--surface); color:var(--ink-2); cursor:pointer;
+}
+.tab[aria-selected="true"]{background:var(--accent); border-color:var(--accent); color:#fff}
+.tab.alt[aria-selected="true"]{background:var(--alt); border-color:var(--alt)}
+.tab:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+.empty{text-align:center; color:var(--ink-3); font-size:13.5px; padding:16px 0}
+
+/* 화면 목록 */
+.legend{margin-top:38px}
+.legend h2{
+  font-family:'Gothic A1',sans-serif; font-weight:700; font-size:18px; margin:0 0 4px;
+}
+.legend p.sub{margin:0 0 16px; color:var(--ink-3); font-size:13.5px}
+.legend ol{list-style:none; margin:0; padding:0; display:grid; gap:1px; background:var(--line); border:1px solid var(--line); border-radius:12px; overflow:hidden}
+.legend li{background:var(--surface); display:flex; gap:14px; align-items:baseline; padding:13px 16px}
+.legend button{
+  font:inherit; font-family:'IBM Plex Mono',monospace; font-size:12.5px; font-weight:500;
+  color:var(--accent); background:none; border:0; padding:0; cursor:pointer;
+  flex:0 0 92px; text-align:left;
+}
+.legend button:hover{text-decoration:underline}
+.legend button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.legend .d{color:var(--ink-2); font-size:13.5px}
+.legend .d b{color:var(--ink); font-weight:600}
+
+footer{margin-top:34px; color:var(--ink-3); font-size:12.5px}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+@media (max-width:640px){
+  .page{padding:30px 14px 60px}
+  .screen{padding:16px 12px 24px}
+  .bars{gap:14px; height:190px}
+  .legend li{flex-direction:column; gap:3px}
+  .legend button{flex:none}
+}
+</style>
+
+<div class="page">
+  <p class="eyebrow">목업 · 표본 데이터</p>
+  <h1>업무보고서</h1>
+  <p class="lede">
+    일일·주간 업무보고서를 만드는 앱입니다. 아래 프레임의 내비게이션을 눌러 화면 여섯 개를 넘겨 볼 수 있습니다.
+  </p>
+  <p class="headnote">
+    화면에 담긴 업무와 수치는 <b>2026년 9월 4일 금요일</b> 기준 표본입니다.
+    보고서 화면의 미리보기는 앱이 실제로 만들어 낸 결과물을 그대로 축소해 넣은 것입니다.
+  </p>
+
+  <div class="frame">
+    <div class="urlbar">
+      <span class="dots"><i></i><i></i><i></i></span>
+      <span class="url">work-report.vercel.app<b id="route">/</b></span>
+    </div>
+    <nav class="appnav" id="nav" aria-label="앱 화면"></nav>
+    <div id="screens"></div>
+  </div>
+
+  <section class="legend">
+    <h2>화면 여섯 개</h2>
+    <p class="sub">각 경로를 누르면 위 프레임이 그 화면으로 바뀝니다.</p>
+    <ol id="legend"></ol>
+  </section>
+
+  <footer>
+    보고서 렌더링 규칙은 기존 두 스킬에서 그대로 옮겼습니다. 색 구간, 정렬 순서, 집계에서 빼는 항목까지 자동 검증합니다.
+  </footer>
+</div>
+
+<div id="report-source" hidden><table width="920" cellpadding="0" cellspacing="0" border="0" bgcolor="#FFE5CC" style="margin:0 auto;border-radius:14px;"><tr><td style="padding:42px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="border-radius:14px;box-shadow:0 2px 14px rgba(0,0,0,0.08);"><tr><td style="padding:46px;">
+<p style="margin:0 0 8px;font-size:34px;font-weight:700;color:#1a1a2e;">일일 업무 보고서</p><p style="margin:0 0 36px;font-size:17px;color:#888;">2026년 9월 4일 (금) &nbsp;·&nbsp; 초등콘텐츠사업부 권호상</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:36px;"><tr>
+<td width="23%" style="background:#f0f4ff;border-radius:12px;padding:26px 18px;text-align:center;"><p style="margin:0;font-size:15px;color:#666;">오늘 업무</p><p style="margin:10px 0 0;font-size:54px;font-weight:700;color:#1a1a2e;">3</p></td><td width="2%"></td>
+<td width="23%" style="background:#f0fff4;border-radius:12px;padding:26px 18px;text-align:center;"><p style="margin:0;font-size:15px;color:#666;">완료</p><p style="margin:10px 0 0;font-size:54px;font-weight:700;color:#639922;">0</p></td><td width="2%"></td>
+<td width="23%" style="background:#f0f7ff;border-radius:12px;padding:26px 18px;text-align:center;"><p style="margin:0;font-size:15px;color:#666;">진행</p><p style="margin:10px 0 0;font-size:54px;font-weight:700;color:#378ADD;">3</p></td><td width="2%"></td>
+<td width="25%" style="background:#fff0f0;border-radius:12px;padding:26px 18px;text-align:center;border:2px solid #e74c3c;"><p style="margin:0;font-size:15px;color:#666;">가장 빠른 마감</p><p style="margin:10px 0 6px;font-size:54px;font-weight:700;color:#e74c3c;">D-3</p><p style="margin:0;font-size:14px;color:#e74c3c;">꼬마생각 샘플권 감수본 확인 · 마감임박</p></td>
+</tr></table>
+<hr style="border:none;border-top:1px solid #eee;margin:0 0 24px;"><p style="margin:0 0 16px;font-size:21px;font-weight:700;color:#1a1a2e;">업무 상세</p>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;border-radius:10px;border-left:6px solid #378ADD;background:#f8f9fa;"><tr><td style="padding:22px 24px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td><p style="margin:0;font-size:18px;font-weight:700;color:#1a1a2e;">꼬마생각 샘플권 감수본 확인</p></td><td align="right" style="white-space:nowrap;"><span style="background:#378ADD;color:#fff;font-size:13px;padding:4px 12px;border-radius:10px;">진행</span><span style="background:#e74c3c;color:#fff;font-size:13px;padding:4px 12px;border-radius:10px;margin-left:6px;">높음</span></td></tr></table>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 2px;padding-left:8px;"><tr><td width="14" style="font-size:15px;color:#555;vertical-align:top;line-height:1.7;white-space:nowrap;padding-right:4px;">·</td><td style="font-size:15px;color:#555;line-height:1.7;">&lt;개미&gt; &lt;발레&gt; &lt;인공지능&gt; 감수 내용 수령</td></tr></table>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 2px;padding-left:8px;"><tr><td width="14" style="font-size:15px;color:#555;vertical-align:top;line-height:1.7;white-space:nowrap;padding-right:4px;">·</td><td style="font-size:15px;color:#555;line-height:1.7;">담당자 전달 및 내용 확인</td></tr></table>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 2px;padding-left:8px;"><tr><td width="14" style="font-size:15px;color:#555;vertical-align:top;line-height:1.7;white-space:nowrap;padding-right:4px;">·</td><td style="font-size:15px;color:#555;line-height:1.7;">09.07 반영 및 수정 종결 예정</td></tr></table>
+  <p style="margin:10px 0 0;font-size:14px;color:#e74c3c;">마감: 2026-09-07 &nbsp;(D-3)</p>
+</td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;border-radius:10px;border-left:6px solid #378ADD;background:#f8f9fa;"><tr><td style="padding:22px 24px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td><p style="margin:0;font-size:18px;font-weight:700;color:#1a1a2e;">꼬마생각 샘플권 준비 작업</p></td><td align="right" style="white-space:nowrap;"><span style="background:#378ADD;color:#fff;font-size:13px;padding:4px 12px;border-radius:10px;">진행</span><span style="background:#e74c3c;color:#fff;font-size:13px;padding:4px 12px;border-radius:10px;margin-left:6px;">높음</span></td></tr></table>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 2px;padding-left:8px;"><tr><td width="14" style="font-size:15px;color:#555;vertical-align:top;line-height:1.7;white-space:nowrap;padding-right:4px;">·</td><td style="font-size:15px;color:#555;line-height:1.7;">&lt;인공지능&gt; &lt;발레&gt; 영역확인지 수령</td></tr></table>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 2px;padding-left:8px;"><tr><td width="14" style="font-size:15px;color:#555;vertical-align:top;line-height:1.7;white-space:nowrap;padding-right:4px;">·</td><td style="font-size:15px;color:#555;line-height:1.7;">내용 대조 및 확인 : 세이펜 진행 요청</td></tr></table>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 2px;padding-left:8px;"><tr><td width="14" style="font-size:15px;color:#555;vertical-align:top;line-height:1.7;white-space:nowrap;padding-right:4px;">·</td><td style="font-size:15px;color:#555;line-height:1.7;">음원 수정 파일 확인 및 재전달</td></tr></table>
+  <p style="margin:10px 0 0;font-size:14px;color:#e67e22;">마감: 2026-09-08 &nbsp;(D-4)</p>
+</td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:16px;border-radius:10px;border-left:6px solid #378ADD;background:#f8f9fa;"><tr><td style="padding:22px 24px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td><p style="margin:0;font-size:18px;font-weight:700;color:#1a1a2e;">꼬마생각 그림 피드백</p></td><td align="right" style="white-space:nowrap;"><span style="background:#378ADD;color:#fff;font-size:13px;padding:4px 12px;border-radius:10px;">진행</span><span style="background:#e74c3c;color:#fff;font-size:13px;padding:4px 12px;border-radius:10px;margin-left:6px;">높음</span></td></tr></table>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 2px;padding-left:8px;"><tr><td width="14" style="font-size:15px;color:#555;vertical-align:top;line-height:1.7;white-space:nowrap;padding-right:4px;">·</td><td style="font-size:15px;color:#555;line-height:1.7;">최종 본문 채색 / 인포그래픽 / 부록 스케치 및 채색 진행</td></tr></table>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 2px;padding-left:8px;"><tr><td width="14" style="font-size:15px;color:#555;vertical-align:top;line-height:1.7;white-space:nowrap;padding-right:4px;">·</td><td style="font-size:15px;color:#555;line-height:1.7;">작업 결과물 수령 : 담당별 확인 내역 검토</td></tr></table>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 2px;padding-left:8px;"><tr><td width="14" style="font-size:15px;color:#555;vertical-align:top;line-height:1.7;white-space:nowrap;padding-right:4px;">·</td><td style="font-size:15px;color:#555;line-height:1.7;">진행 상황 점검 및 일정 확인</td></tr></table>
+  <p style="margin:10px 0 0;font-size:14px;color:#e67e22;">마감: 2026-09-11 &nbsp;(D-7)</p>
+</td></tr></table>
+<hr style="border:none;border-top:1px solid #eee;margin:24px 0 28px;"><table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:18px;"><tr><td width="46%"><p style="margin:0;font-size:21px;font-weight:700;color:#1a1a2e;">단위 업무 진행율</p></td><td width="8%"></td><td width="46%"><p style="margin:0;font-size:21px;font-weight:700;color:#1a1a2e;">시리즈별 개발 현황</p></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr valign="top"><td width="46%">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="font-size:15px;font-weight:600;color:#1a1a2e;padding-bottom:7px;">꼬마생각 샘플권 감수본 확인 &nbsp;<span style="color:#e74c3c;font-size:14px;font-weight:700;">D-3</span></td><td align="right" style="font-size:15px;font-weight:700;color:#e67e22;padding-bottom:7px;">30%</td></tr><tr><td colspan="2" style="background:#e8e8e8;border-radius:20px;height:22px;padding:0;overflow:hidden;"><div style="width:30%;background:#e67e22;height:22px;border-radius:20px;"></div></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="font-size:15px;font-weight:600;color:#1a1a2e;padding-bottom:7px;">꼬마생각 샘플권 준비 작업 &nbsp;<span style="color:#e67e22;font-size:14px;font-weight:700;">D-4</span></td><td align="right" style="font-size:15px;font-weight:700;color:#639922;padding-bottom:7px;">90%</td></tr><tr><td colspan="2" style="background:#e8e8e8;border-radius:20px;height:22px;padding:0;overflow:hidden;"><div style="width:90%;background:#639922;height:22px;border-radius:20px;"></div></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr><td style="font-size:15px;font-weight:600;color:#1a1a2e;padding-bottom:7px;">꼬마생각 그림 피드백 &nbsp;<span style="color:#e67e22;font-size:14px;font-weight:700;">D-7</span></td><td align="right" style="font-size:15px;font-weight:700;color:#639922;padding-bottom:7px;">95%</td></tr><tr><td colspan="2" style="background:#e8e8e8;border-radius:20px;height:22px;padding:0;overflow:hidden;"><div style="width:95%;background:#639922;height:22px;border-radius:20px;"></div></td></tr></table>
+</td><td width="8%"></td><td width="46%" valign="bottom"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr valign="bottom">
+<td width="33%" style="text-align:center;vertical-align:bottom;padding:0 4px;"><p style="margin:0 0 4px;font-size:12px;font-weight:700;color:#378ADD;">79%</p><table width="50%" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#378ADD;height:173px;border-radius:6px 6px 0 0;min-height:4px;"></td></tr></table><p style="margin:4px 0 0;font-size:11px;color:#555;word-break:keep-all;text-align:center;">꼬마생각뒤집기</p></td>
+<td width="33%" style="text-align:center;vertical-align:bottom;padding:0 4px;"><p style="margin:0 0 4px;font-size:12px;font-weight:700;color:#e67e22;">40%</p><table width="50%" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#e67e22;height:88px;border-radius:6px 6px 0 0;min-height:4px;"></td></tr></table><p style="margin:4px 0 0;font-size:11px;color:#555;word-break:keep-all;text-align:center;">꼬마역사뒤집기</p></td>
+<td width="33%" style="text-align:center;vertical-align:bottom;padding:0 4px;"><p style="margin:0 0 4px;font-size:12px;font-weight:700;color:#9b59b6;">62%</p><table width="50%" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:#9b59b6;height:136px;border-radius:6px 6px 0 0;min-height:4px;"></td></tr></table><p style="margin:4px 0 0;font-size:11px;color:#555;word-break:keep-all;text-align:center;">꼬마 일력</p></td>
+</tr></table></td></tr></table>
+<hr style="border:none;border-top:1px solid #eee;margin:10px 0 18px;"><p style="margin:0;font-size:13px;color:#aaa;text-align:center;">이 보고서는 Notion 업무 관리 데이터를 기반으로 자동 생성되었습니다.</p></td></tr></table></td></tr></table></div>
+
+<script>
+(function(){
+  var TODAY = '2026-09-04';
+
+  var C = {
+    done:'var(--done)', going:'var(--going)', warn:'var(--warn)',
+    urgent:'var(--urgent)', idle:'var(--idle)', alt:'var(--alt)'
+  };
+  function statusColor(s){
+    if(s==='완료'||s==='종결') return C.done;
+    if(s==='진행') return C.going;
+    if(s==='시작') return C.alt;
+    return C.idle;
+  }
+  function priColor(p){ return p==='높음'?C.urgent : p==='중간'?C.warn : C.idle; }
+  function ddayColor(d){ return d===null?C.idle : d<=3?C.urgent : d<=7?C.warn : C.idle; }
+  function barColor(p){
+    if(!p) return 'var(--line)';
+    if(p<25) return C.urgent; if(p<50) return C.warn;
+    if(p<75) return C.going; return C.done;
+  }
+  function dday(due){
+    if(!due) return null;
+    return Math.round((Date.parse(due+'T00:00:00Z') - Date.parse(TODAY+'T00:00:00Z'))/86400000);
+  }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
+  function pill(text,color){ return '<span class="pill" style="background:'+color+'">'+esc(text)+'</span>'; }
+  function tag(text){ return '<span class="tag">'+esc(text)+'</span>'; }
+  function ddayTag(d){
+    if(d===null) return '<span class="tag">마감 없음</span>';
+    return '<span class="dday" style="color:'+ddayColor(d)+'">D-'+d+'</span>';
+  }
+
+  /* ── 표본 데이터 ─────────────────────────────────────────── */
+  var TASKS = [
+    {t:'꼬마생각 샘플권 감수본 확인', type:'꼬마시리즈 개발', st:'진행', pr:'높음', pg:30,  due:'2026-09-07'},
+    {t:'꼬마생각 샘플권 준비 작업',   type:'꼬마시리즈 개발', st:'진행', pr:'높음', pg:90,  due:'2026-09-08'},
+    {t:'꼬마생각 샘플권 인쇄 감리',   type:'꼬마시리즈 개발', st:'예정', pr:'높음', pg:null,due:'2026-09-10'},
+    {t:'꼬마생각 그림 피드백',       type:'꼬마시리즈 개발', st:'진행', pr:'높음', pg:95,  due:'2026-09-11'},
+    {t:'꼬마일력 월별 콘텐츠 작성',   type:'꼬마시리즈 개발', st:'진행', pr:'중간', pg:50,  due:'2026-09-11'},
+    {t:'꼬마생각 본문 교정교열',     type:'꼬마시리즈 개발', st:'시작', pr:'중간', pg:10,  due:'2026-09-30'},
+    {t:'기타 사항',                 type:'기타 업무',      st:'진행', pr:'낮음', pg:null,due:null, misc:true}
+  ];
+
+  var LOGS = [
+    {t:'꼬마생각 샘플권 감수본 확인', st:'진행', pr:'높음', pg:30, due:'2026-09-07', lines:[
+      '<개미> <발레> <인공지능> 감수 내용 수령',
+      '담당자 전달 및 내용 확인',
+      '09.07 반영 및 수정 종결 예정']},
+    {t:'꼬마생각 샘플권 준비 작업', st:'진행', pr:'높음', pg:90, due:'2026-09-08', lines:[
+      '<인공지능> <발레> 영역확인지 수령',
+      '내용 대조 및 확인 : 세이펜 진행 요청',
+      '음원 수정 파일 확인 및 재전달']},
+    {t:'꼬마생각 그림 피드백', st:'진행', pr:'높음', pg:95, due:'2026-09-11', lines:[
+      '최종 본문 채색 / 인포그래픽 / 부록 스케치 및 채색 진행',
+      '작업 결과물 수령 : 담당별 확인 내역 검토',
+      '진행 상황 점검 및 일정 확인']}
+  ];
+
+  var PREV = [
+    {t:'꼬마생각 샘플권 감수 진행', st:'완료', pg:100, due:'2026-09-04', out:'감수 의견서 3권'},
+    {t:'꼬마생각 샘플권 제작 준비', st:'진행', pg:90,  due:'2026-09-07', out:'영역확인지·음원'},
+    {t:'꼬마일력 월별 콘텐츠 작성', st:'진행', pg:50,  due:'2026-09-11', out:''},
+    {t:'꼬마생각 본문 교정교열',   st:'진행', pg:10,  due:'2026-09-30', out:''}
+  ];
+  var PLAN = [
+    {t:'꼬마생각 샘플권 데이터 송고', due:'2026-09-08', note:'인쇄소 전달'},
+    {t:'꼬마생각 샘플권 인쇄 감리',   due:'2026-09-10', note:''},
+    {t:'꼬마생각 본문 교정교열',     due:'2026-09-30', note:''}
+  ];
+  var SERIES = [
+    {n:'꼬마생각뒤집기', p:79, c:'#378ADD'},
+    {n:'꼬마역사뒤집기', p:40, c:'#e67e22'},
+    {n:'꼬마 일력',      p:62, c:'#9b59b6'}
+  ];
+  var HISTORY = [
+    {k:'주간', f:'weekly_report_2026-09-04.html', d:'2026-09-04', drive:true},
+    {k:'일일', f:'report_2026-09-04.html',        d:'2026-09-04', drive:true},
+    {k:'일일', f:'report_2026-09-03.html',        d:'2026-09-03', drive:true},
+    {k:'일일', f:'report_2026-09-02.html',        d:'2026-09-02', drive:true},
+    {k:'일일', f:'report_2026-09-01.html',        d:'2026-09-01', drive:false}
+  ];
+
+  /* ── 화면 ────────────────────────────────────────────────── */
+  function head(title, sub, right){
+    return '<div class="shead"><div><h2>'+title+'</h2><p>'+sub+'</p></div>'
+      + '<div class="row">'+(right||'')+'</div></div>';
+  }
+
+  function screenToday(){
+    var h = head('오늘','2026년 9월 4일 (금) · 2026년 9월 1주차',
+      '<button class="btn">일일 기록하기</button><button class="btn ghost">주간 현황</button>');
+
+    h += '<div class="card"><div class="chead"><h3>오늘 기록한 업무</h3>'
+       + '<span class="count">3건</span></div><div class="rows">';
+    LOGS.forEach(function(l){
+      var d = dday(l.due);
+      h += '<div class="rw"><span class="t">'+esc(l.t)+'</span>'
+         + pill(l.st, statusColor(l.st))
+         + tag(l.pg==null?'진행률 없음':l.pg+'%')
+         + ddayTag(d) + '</div>';
+    });
+    h += '</div><div class="row" style="margin-top:14px">'
+       + '<button class="btn">일일 보고서 만들기</button></div></div>';
+
+    h += '<div class="card"><div class="chead"><h3>이번 주 현황</h3>'
+       + '<span class="count">전주 실적 4건 · 금주 예정 3건</span></div>'
+       + '<div class="row"><button class="btn alt">주간 보고서 만들기</button>'
+       + '<span class="count">주 시작 2026-08-31</span></div></div>';
+
+    h += '<div class="card"><div class="chead"><h3>마감이 가까운 업무</h3></div><div class="rows">';
+    TASKS.filter(function(t){return t.due;}).slice(0,5).forEach(function(t){
+      var d = dday(t.due);
+      h += '<div class="rw"><span class="t">'+esc(t.t)+'</span>'
+         + '<span class="tag">'+t.due+'</span>' + ddayTag(d) + '</div>';
+    });
+    h += '</div></div>';
+    return h;
+  }
+
+  function screenTasks(){
+    var h = head('단위 업무','보고서에 들어가는 업무 목록입니다. 여기서 상태와 진행률을 관리합니다.',
+      '<button class="btn ghost sm">보관함 보기</button>');
+
+    h += '<div class="card"><div class="chead"><h3>업무 추가</h3></div>'
+       + '<div class="fld" style="margin-bottom:12px"><label>업무명</label>'
+       + '<input class="inp" readonly value="꼬마생각 샘플권 인쇄 감리"></div>'
+       + '<div class="grid4">'
+       + fld('시리즈','꼬마생각뒤집기') + fld('업무 유형','꼬마시리즈 개발')
+       + fld('진행 상태','예정') + fld('우선순위','높음')
+       + fld('진행률 (%) · 비우면 진행률 바에서 빠집니다','')
+       + fld('마감 시한 · 비우면 D-day를 표시하지 않습니다','2026-09-10')
+       + '</div><button class="btn">추가</button></div>';
+
+    h += '<div class="card"><div class="chead"><h3>업무 목록</h3>'
+       + '<span class="count">'+TASKS.length+'건</span></div><div class="rows">';
+    TASKS.forEach(function(t){
+      var d = dday(t.due);
+      h += '<div class="rw"><span class="t">'+esc(t.t)+'</span>'
+         + pill(t.st, statusColor(t.st)) + pill(t.pr, priColor(t.pr))
+         + tag(t.pg==null?'진행률 없음':t.pg+'%')
+         + (t.due?'<span class="tag">'+t.due+'</span>':'<span class="tag">마감 없음</span>')
+         + (t.misc?'<span class="tag">기타</span>':'')
+         + '<span style="flex:1 1 auto"></span>'
+         + '<button class="btn ghost sm">수정</button>'
+         + '<button class="btn ghost sm">보관</button></div>';
+    });
+    h += '</div></div>';
+    return h;
+  }
+
+  function fld(label,val){
+    return '<div class="fld"><label>'+esc(label)+'</label>'
+      + '<input class="inp" readonly value="'+esc(val)+'"></div>';
+  }
+
+  function screenDaily(){
+    var h = head('일일 기록','2026년 9월 4일 (금) 에 진행한 업무와 세부내용을 적습니다.',
+      '<input class="inp datefield" readonly value="2026-09-04">'
+      + '<button class="btn">보고서 만들기</button>');
+
+    h += '<div class="card"><div class="chead"><h3>업무 추가</h3>'
+       + '<span class="count">3건 기록됨</span></div><div class="row">'
+       + '<input class="inp grow" readonly value="업무 목록에서 고르기…">'
+       + '<button class="btn" disabled>추가</button>'
+       + '<button class="btn ghost">직접 입력</button></div></div>';
+
+    LOGS.forEach(function(l,i){
+      var d = dday(l.due);
+      h += '<div class="card"><div class="chead"><h3>'+esc(l.t)+'</h3><div class="row">'
+         + ddayTag(d)
+         + '<button class="btn ghost sm">↑</button><button class="btn ghost sm">↓</button>'
+         + '<button class="btn ghost sm">빼기</button></div></div>'
+         + '<div class="grid4">'
+         + fld('진행 상태', l.st) + fld('우선순위', l.pr)
+         + fld('진행률 (%)', l.pg) + fld('마감 시한', l.due)
+         + '</div>'
+         + '<div class="fld" style="margin-bottom:12px">'
+         + '<label>세부내용 · 한 줄에 하나씩 적으면 글머리로 들어갑니다</label>'
+         + '<textarea class="inp" readonly rows="3">'+esc(l.lines.join('\n'))+'</textarea></div>'
+         + '<button class="btn">저장</button></div>';
+    });
+    return h;
+  }
+
+  function screenWeekly(){
+    var h = head('주간 현황','2026년 9월 1주차 · 주 시작 2026-08-31',
+      '<input class="inp datefield" readonly value="2026-09-04">'
+      + '<button class="btn alt">보고서 만들기</button>');
+
+    h += '<div class="card"><div class="chead"><h3>전주 실적</h3><div class="row">'
+       + '<span class="count">4건</span>'
+       + '<button class="btn ghost sm">지난 주 예정 가져오기</button></div></div>'
+       + '<div class="row"><input class="inp grow" readonly value="업무 목록에서 고르기…">'
+       + '<button class="btn" disabled>추가</button>'
+       + '<button class="btn ghost">직접 입력</button></div></div>';
+
+    PREV.forEach(function(r){
+      var d = dday(r.due);
+      h += '<div class="card"><div class="chead">'
+         + '<input class="inp" readonly style="max-width:340px;font-weight:600" value="'+esc(r.t)+'">'
+         + '<div class="row">'+ddayTag(d)+'<button class="btn ghost sm">빼기</button></div></div>'
+         + '<div class="grid4">'
+         + fld('업무 유형','꼬마시리즈 개발') + fld('진행 상태', r.st)
+         + fld('진행률 (%)', r.pg) + fld('종결 예정일', r.due)
+         + '</div><div class="grid4">'
+         + fld('산출물', r.out) + fld('비고','')
+         + '</div><button class="btn">저장</button></div>';
+    });
+
+    h += '<div class="card"><div class="chead"><h3>금주 예정</h3>'
+       + '<span class="count">3건</span></div>'
+       + '<div class="row"><input class="inp grow" readonly value="업무 목록에서 고르기…">'
+       + '<button class="btn" disabled>추가</button>'
+       + '<button class="btn ghost">직접 입력</button></div></div>';
+
+    PLAN.forEach(function(r){
+      var d = dday(r.due);
+      h += '<div class="card"><div class="chead">'
+         + '<input class="inp" readonly style="max-width:340px;font-weight:600" value="'+esc(r.t)+'">'
+         + '<div class="row">'+ddayTag(d)+'<button class="btn ghost sm">빼기</button></div></div>'
+         + '<div class="grid4">'
+         + fld('업무 유형','꼬마시리즈 개발') + fld('종결 예정일', r.due) + fld('비고', r.note)
+         + '</div><button class="btn">저장</button></div>';
+    });
+    return h;
+  }
+
+  function screenSeries(){
+    var h = head('시리즈별 개발 현황',
+      '보고서 오른쪽 세로 막대에 쓰이는 총 진행률입니다. 노션 화면의 값을 그대로 입력하세요.','');
+
+    h += '<div class="note"><span>ℹ</span><span>이 값만 직접 입력합니다. '
+       + '노션에서는 수식으로 계산돼 API로 읽히지 않던 항목입니다.</span></div>';
+
+    h += '<div class="card">';
+    SERIES.forEach(function(s){
+      h += '<div class="fld" style="margin-bottom:12px"><label>'+esc(s.n)+'</label>'
+         + '<div class="row"><input class="inp grow datefield" readonly value="'+s.p+'">'
+         + '<span class="count">2026-09-04 갱신</span></div></div>';
+    });
+    h += '<button class="btn">저장</button></div>';
+
+    h += '<div class="card"><div class="chead"><h3>미리보기</h3></div><div class="bars">';
+    SERIES.forEach(function(s){
+      h += '<div class="bar"><div class="v" style="color:'+s.c+'">'+s.p+'%</div>'
+         + '<div class="stem" style="background:'+s.c+';height:'+Math.max(4,Math.trunc(s.p*2.2))+'px"></div>'
+         + '<div class="n">'+esc(s.n)+'</div></div>';
+    });
+    h += '</div></div>';
+    return h;
+  }
+
+  function screenReports(){
+    var h = head('보고서','2026년 9월 4일 (금)','');
+
+    h += '<div class="card">'
+       + '<div class="tabs" role="tablist">'
+       + '<button class="tab" role="tab" aria-selected="true">일일 업무 보고서</button>'
+       + '<button class="tab alt" role="tab" aria-selected="false">주간업무 보고서</button>'
+       + '</div><div class="row">'
+       + '<input class="inp datefield" readonly value="2026-09-04">'
+       + '<button class="btn">보고서 만들기</button>'
+       + '<button class="btn ghost">구글 드라이브에 저장</button>'
+       + '<button class="btn ghost">HTML 내려받기</button>'
+       + '<button class="btn ghost">HTML 복사</button></div>'
+       + '<div class="note" style="margin:14px 0 0"><span>✓</span>'
+       + '<span>구글 드라이브에 저장했습니다: <b>report_2026-09-04.html</b> · 드라이브에서 열기</span></div>'
+       + '</div>';
+
+    h += '<div class="card"><div class="chead"><h3>미리보기</h3>'
+       + '<span class="count">report_2026-09-04.html</span></div>'
+       + '<div class="preview"><div class="scaler" id="preview-slot"></div></div>'
+       + '<p class="previewnote">앱이 만들어 낸 실제 결과물을 축소해 보여 줍니다.</p></div>';
+
+    h += '<div class="card"><div class="chead"><h3>생성 이력</h3>'
+       + '<span class="count">최근 30건</span></div><div class="rows">';
+    HISTORY.forEach(function(r){
+      h += '<div class="rw"><span class="tag">'+r.k+'</span>'
+         + '<span class="t mono" style="font-size:13px">'+esc(r.f)+'</span>'
+         + '<span class="tag">'+r.d+'</span>'
+         + (r.drive?'<span class="pill" style="background:var(--accent)">드라이브</span>':'')
+         + '<span style="flex:1 1 auto"></span>'
+         + '<button class="btn ghost sm">열기</button></div>';
+    });
+    h += '</div></div>';
+    return h;
+  }
+
+  /* ── 조립 ────────────────────────────────────────────────── */
+  var SCREENS = [
+    {id:'today',   path:'/',        label:'오늘',     build:screenToday,
+     desc:'오늘 기록한 업무와 마감이 가까운 업무를 모아 보고, 보고서 만들기로 바로 넘어갑니다.'},
+    {id:'tasks',   path:'/tasks',   label:'업무',     build:screenTasks,
+     desc:'단위 업무를 등록하고 상태·진행률·마감을 관리합니다. 다 쓴 업무는 보관함으로 넘깁니다.'},
+    {id:'daily',   path:'/daily',   label:'일일 기록', build:screenDaily,
+     desc:'날짜를 고르고 그날 진행한 업무와 세부내용을 적습니다. 저장하면 단위 업무도 같이 갱신됩니다.'},
+    {id:'weekly',  path:'/weekly',  label:'주간 현황', build:screenWeekly,
+     desc:'주차별 전주 실적과 금주 예정을 채웁니다. 지난 주 예정을 이번 주 실적으로 옮겨 올 수 있습니다.'},
+    {id:'series',  path:'/series',  label:'시리즈',   build:screenSeries,
+     desc:'시리즈 세 종의 총 진행률을 직접 입력합니다. 보고서 오른쪽 세로 막대에 쓰입니다.'},
+    {id:'reports', path:'/reports', label:'보고서',   build:screenReports,
+     desc:'보고서를 만들어 미리 보고, 구글 드라이브 지정 폴더에 저장하거나 HTML로 내려받습니다.'}
+  ];
+
+  var nav = document.getElementById('nav');
+  var wrap = document.getElementById('screens');
+  var legend = document.getElementById('legend');
+  var route = document.getElementById('route');
+
+  nav.innerHTML = '<span class="brand">📋 업무보고서</span>'
+    + SCREENS.map(function(s){
+        return '<button class="navbtn" type="button" data-go="'+s.id+'">'+s.label+'</button>';
+      }).join('')
+    + '<span class="who">khs386@gmail.com</span>';
+
+  wrap.innerHTML = SCREENS.map(function(s){
+    return '<section class="screen" id="scr-'+s.id+'" hidden>'+s.build()+'</section>';
+  }).join('');
+
+  legend.innerHTML = SCREENS.map(function(s){
+    return '<li><button type="button" data-go="'+s.id+'">'+s.path+'</button>'
+      + '<span class="d"><b>'+s.label+'</b> — '+s.desc+'</span></li>';
+  }).join('');
+
+  // 실제 결과물을 보고서 화면 미리보기에 넣는다
+  var src = document.getElementById('report-source');
+  var slot = document.getElementById('preview-slot');
+  if(src && slot) slot.innerHTML = src.innerHTML;
+
+  // 결과물의 실제 폭을 재서 미리보기 창에 꼭 맞게 줄인다
+  function fitPreview(){
+    var box = document.querySelector('.preview');
+    var sc = document.getElementById('preview-slot');
+    if(!box || !sc || !sc.firstElementChild || !box.clientWidth) return;
+    sc.style.transform = 'none';
+    sc.style.width = 'max-content';
+    var w = sc.firstElementChild.offsetWidth;
+    if(!w) return;
+    sc.style.width = w + 'px';
+    sc.style.transform = 'scale(' + (box.clientWidth / w) + ')';
+  }
+  window.addEventListener('resize', fitPreview);
+
+  function show(id){
+    SCREENS.forEach(function(s){
+      document.getElementById('scr-'+s.id).hidden = (s.id !== id);
+    });
+    nav.querySelectorAll('[data-go]').forEach(function(b){
+      if(b.dataset.go === id) b.setAttribute('aria-current','page');
+      else b.removeAttribute('aria-current');
+    });
+    var s = SCREENS.filter(function(x){return x.id===id;})[0];
+    route.textContent = s ? s.path : '/';
+    if(id === 'reports') fitPreview();
+  }
+
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-go]');
+    if(!b) return;
+    show(b.dataset.go);
+    if(b.closest('.legend')) document.querySelector('.frame').scrollIntoView({behavior:'smooth', block:'start'});
+  });
+
+  show('today');
+})();
+</script>

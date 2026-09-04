@@ -9,10 +9,13 @@ export function todayKST() {
   return now.toISOString().slice(0, 10)
 }
 
-/** cron 요청 인증. Vercel Cron은 CRON_SECRET을 Bearer로 보낸다. */
+/**
+ * cron 요청 인증. Vercel Cron은 CRON_SECRET을 Bearer로 보낸다.
+ * 운영에서 비밀값이 없으면 누구나 보고서 생성과 드라이브 업로드를 부를 수 있으므로 막는다.
+ */
 export function authorized(req) {
   const secret = process.env.CRON_SECRET
-  if (!secret) return true // 미설정이면 검사하지 않는다 (로컬 확인용)
+  if (!secret) return process.env.NODE_ENV !== 'production'
   return req.headers.get('authorization') === `Bearer ${secret}`
 }
 
@@ -25,7 +28,10 @@ export async function runScheduled(req, kind) {
 }
 
 async function run(req, kind) {
-  if (!authorized(req)) return NextResponse.json({ error: '권한 없음' }, { status: 401 })
+  if (!authorized(req)) {
+    const why = process.env.CRON_SECRET ? '권한 없음' : 'CRON_SECRET이 설정되지 않았습니다.'
+    return NextResponse.json({ error: why }, { status: 401 })
+  }
   const url = new URL(req.url)
   const date = url.searchParams.get('date') || todayKST()
   const force = url.searchParams.get('force') === '1'
