@@ -107,10 +107,15 @@ function taskForm(form) {
 
 app.get('/tasks', async (c) => {
   const archived = c.req.query('archived') === '1'
-  const tasks = await db.listTasks(c.env.DB, { archived })
+  const [tasks, series] = await Promise.all([
+    db.listTasks(c.env.DB, { archived }),
+    db.listSeries(c.env.DB),
+  ])
   const editId = c.req.query('edit')
   return html(c, tasksPage({
     tasks, archived,
+    // 시리즈 목록은 /series 화면에서 관리하는 것을 그대로 쓴다
+    seriesNames: series.map((s) => s.name),
     editing: editId ? await db.getTask(c.env.DB, editId) : null,
     msg: c.req.query('msg'),
   }))

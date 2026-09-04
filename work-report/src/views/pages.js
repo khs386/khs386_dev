@@ -6,7 +6,6 @@ import { statusTint, priorityTint, ddayTint } from './ui.js'
 
 export const STATUSES = ['예정', '시작', '진행', '완료', '보류']
 export const PRIORITIES = ['높음', '중간', '낮음']
-export const SERIES_NAMES = ['꼬마생각뒤집기', '꼬마역사뒤집기', '꼬마 일력', '기타']
 export const WORK_TYPES = [
   '꼬마시리즈 개발', '꼬마생각뒤집기 개발', '꼬마역사뒤집기 개발',
   '꼬마과학뒤집기 개발', '기타 업무',
@@ -80,9 +79,9 @@ ${stale.length ? notice('시리즈 진행률이 아직 입력되지 않았습니
 
 /* ── 업무 ───────────────────────────────────────────────── */
 
-export function tasksPage({ tasks, editing, archived, msg }) {
+export function tasksPage({ tasks, editing, archived, seriesNames, msg }) {
   const f = editing || {
-    title: '', series: '꼬마생각뒤집기', work_type: '꼬마시리즈 개발',
+    title: '', series: seriesNames[0] || '', work_type: '꼬마시리즈 개발',
     priority: '중간', status: '진행', progress: '', deadline: '', is_misc: false,
   }
   const form = `
@@ -92,7 +91,7 @@ export function tasksPage({ tasks, editing, archived, msg }) {
     <div class="fld" style="margin-bottom:10px"><label>업무명</label>
       <input name="title" value="${esc(f.title)}" placeholder="예: 꼬마생각 샘플권 감수본 확인" required></div>
     <div class="grid">
-      ${optionalSelect('시리즈', 'series', f.series, SERIES_NAMES)}
+      ${optionalSelect('시리즈', 'series', f.series, seriesNames)}
       ${optionalSelect('업무 유형', 'work_type', f.work_type, WORK_TYPES)}
       ${field('진행 상태', 'status', f.status, { options: STATUSES })}
       ${field('우선순위', 'priority', f.priority, { options: PRIORITIES })}
