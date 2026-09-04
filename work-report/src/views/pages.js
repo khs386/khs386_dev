@@ -6,10 +6,6 @@ import { statusTint, priorityTint, ddayTint } from './ui.js'
 
 export const STATUSES = ['예정', '시작', '진행', '완료', '보류']
 export const PRIORITIES = ['높음', '중간', '낮음']
-export const WORK_TYPES = [
-  '꼬마시리즈 개발', '꼬마생각뒤집기 개발', '꼬마역사뒤집기 개발',
-  '꼬마과학뒤집기 개발', '기타 업무',
-]
 
 const ddayTag = (d) =>
   d === null
@@ -79,9 +75,9 @@ ${stale.length ? notice('시리즈 진행률이 아직 입력되지 않았습니
 
 /* ── 업무 ───────────────────────────────────────────────── */
 
-export function tasksPage({ tasks, editing, archived, seriesNames, msg }) {
+export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, msg }) {
   const f = editing || {
-    title: '', series: seriesNames[0] || '', work_type: '꼬마시리즈 개발',
+    title: '', series: seriesNames[0] || '', work_type: workTypes[0] || '',
     priority: '중간', status: '진행', progress: '', deadline: '', is_misc: false,
   }
   const form = `
@@ -92,7 +88,7 @@ export function tasksPage({ tasks, editing, archived, seriesNames, msg }) {
       <input name="title" value="${esc(f.title)}" placeholder="예: 꼬마생각 샘플권 감수본 확인" required></div>
     <div class="grid">
       ${optionalSelect('시리즈', 'series', f.series, seriesNames)}
-      ${optionalSelect('업무 유형', 'work_type', f.work_type, WORK_TYPES)}
+      ${optionalSelect('업무 유형', 'work_type', f.work_type, workTypes)}
       ${field('진행 상태', 'status', f.status, { options: STATUSES })}
       ${field('우선순위', 'priority', f.priority, { options: PRIORITIES })}
       ${field('진행률 (%)', 'progress', f.progress, { type: 'number', min: 0, max: 100 })}
@@ -140,8 +136,41 @@ ${archived ? '' : form}
         </div>`).join('')
       : '<p class="empty">업무가 없습니다.</p>'
   }
-</div>`
+</div>
+${archived ? '' : workTypeCard(workTypes)}`
   return page({ title: '업무', path: '/tasks', body })
+}
+
+/** 업무 유형 관리. 이름을 바꾸면 그 유형을 쓰던 업무도 함께 따라간다. */
+function workTypeCard(workTypes) {
+  return `
+<div class="card">
+  <div class="chead"><h2>업무 유형 관리</h2>
+    <span class="count">${workTypes.length}개</span></div>
+  ${
+    workTypes.length
+      ? `<form method="post" action="/work-types">
+    ${workTypes.map((t, i) => `
+    <div class="item">
+      <input type="hidden" name="from" value="${esc(t)}">
+      <input name="to" value="${esc(t)}" class="grow" aria-label="업무 유형 이름">
+      <button class="btn ghost sm" formaction="/work-types/move" name="move" value="${esc(t)}:-1"
+              formnovalidate${i === 0 ? ' disabled' : ''}>↑</button>
+      <button class="btn ghost sm" formaction="/work-types/move" name="move" value="${esc(t)}:1"
+              formnovalidate${i === workTypes.length - 1 ? ' disabled' : ''}>↓</button>
+      <button class="btn danger sm" formaction="/work-types/delete" name="remove" value="${esc(t)}"
+              formnovalidate
+              onclick="return confirm('${esc(t)} 을(를) 지울까요? 이 유형을 쓰던 업무는 유형이 비워집니다.')">삭제</button>
+    </div>`).join('')}
+    <div class="row" style="margin-top:16px"><button class="btn">이름 저장</button></div>
+  </form>`
+      : '<p class="empty">업무 유형이 없습니다. 아래에서 추가하세요.</p>'
+  }
+  <form method="post" action="/work-types/new" class="row" style="margin-top:16px">
+    <input name="name" class="grow" placeholder="새 업무 유형 (예: 세이펜 제작)" required>
+    <button class="btn ghost">추가</button>
+  </form>
+</div>`
 }
 
 /* ── 일일 기록 ──────────────────────────────────────────── */
@@ -225,7 +254,7 @@ ${
 
 /* ── 주간 현황 ──────────────────────────────────────────── */
 
-export function weeklyPage({ date, weekStart, items, tasks, msg, saved }) {
+export function weeklyPage({ date, weekStart, items, tasks, workTypes, msg, saved }) {
   const byKind = (k) => items.filter((i) => i.kind === k)
 
   const addForm = (kind) => `
@@ -255,7 +284,7 @@ export function weeklyPage({ date, weekStart, items, tasks, msg, saved }) {
       <div class="row">${savedMark(saved === it.id)}${d === null ? '' : ddayTag(d)}</div>
     </div>
     <div class="grid">
-      ${optionalSelect('업무 유형', 'work_type', it.work_type, WORK_TYPES)}
+      ${optionalSelect('업무 유형', 'work_type', it.work_type, workTypes)}
       ${
         kind === '전주 실적'
           ? optionalSelect('진행 상태', 'status', it.status, [...STATUSES, '종결']) +

@@ -107,15 +107,17 @@ function taskForm(form) {
 
 app.get('/tasks', async (c) => {
   const archived = c.req.query('archived') === '1'
-  const [tasks, series] = await Promise.all([
+  const [tasks, series, workTypes] = await Promise.all([
     db.listTasks(c.env.DB, { archived }),
     db.listSeries(c.env.DB),
+    db.listWorkTypes(c.env.DB),
   ])
   const editId = c.req.query('edit')
   return html(c, tasksPage({
     tasks, archived,
-    // 시리즈 목록은 /series 화면에서 관리하는 것을 그대로 쓴다
+    // 시리즈와 업무 유형은 화면에서 관리하는 목록을 그대로 쓴다
     seriesNames: series.map((s) => s.name),
+    workTypes: workTypes.map((t) => t.name),
     editing: editId ? await db.getTask(c.env.DB, editId) : null,
     msg: c.req.query('msg'),
   }))
@@ -216,12 +218,14 @@ app.post('/daily/:id/move', async (c) => {
 app.get('/weekly', async (c) => {
   const date = dateOr(c.req.query('date'), todayKST())
   const ws = weekStart(date)
-  const [items, tasks] = await Promise.all([
+  const [items, tasks, workTypes] = await Promise.all([
     db.listWeekly(c.env.DB, ws),
     db.listTasks(c.env.DB),
+    db.listWorkTypes(c.env.DB),
   ])
   return html(c, weeklyPage({
     date, weekStart: ws, items, tasks,
+    workTypes: workTypes.map((t) => t.name),
     msg: c.req.query('msg'), saved: c.req.query('saved'),
   }))
 })
@@ -306,6 +310,40 @@ app.post('/weekly/carry-over', async (c) => {
     }, order++)
   }
   return back(c, `/weekly?date=${date}`, `${fresh.length}건을 전주 실적으로 가져왔습니다.`)
+})
+
+/* ── 업무 유형 ──────────────────────────────────────────── */
+
+app.post('/work-types', async (c) => {
+  const form = await c.req.formData()
+  const froms = form.getAll('from')
+  const tos = form.getAll('to')
+  const { error, changed } = await db.renameWorkTypes(
+    c.env.DB,
+    froms.map((from, i) => ({ from, to: tos[i] }))
+  )
+  if (error) return back(c, '/tasks', error)
+  return back(c, '/tasks', changed.length ? `${changed.length}개 이름을 바꿨습니다.` : '바뀐 이름이 없습니다.')
+})
+
+app.post('/work-types/new', async (c) => {
+  const form = await c.req.formData()
+  const { error, name } = await db.createWorkType(c.env.DB, form.get('name'))
+  return back(c, '/tasks', error || `"${name}"을(를) 추가했습니다.`)
+})
+
+app.post('/work-types/delete', async (c) => {
+  const form = await c.req.formData()
+  const name = form.get('remove')
+  if (name) await db.deleteWorkType(c.env.DB, name)
+  return back(c, '/tasks', name ? `"${name}"을(를) 지웠습니다.` : '')
+})
+
+app.post('/work-types/move', async (c) => {
+  const form = await c.req.formData()
+  const [name, dir] = String(form.get('move') || '').split(':')
+  if (name) await db.moveWorkType(c.env.DB, name, Number(dir) || 1)
+  return c.redirect('/tasks')
 })
 
 /* ── 시리즈 ─────────────────────────────────────────────── */

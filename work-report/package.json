@@ -10,7 +10,9 @@
     "db:init:local": "wrangler d1 execute work-report --local --file=./migrations/0001_init.sql",
     "test": "node --test \"test/**/*.test.mjs\"",
     "db:migrate": "wrangler d1 execute work-report --remote --file=./migrations/0002_series_manage.sql",
-    "db:migrate:local": "wrangler d1 execute work-report --local --file=./migrations/0002_series_manage.sql"
+    "db:migrate:local": "wrangler d1 execute work-report --local --file=./migrations/0002_series_manage.sql",
+    "db:migrate3": "wrangler d1 execute work-report --remote --file=./migrations/0003_work_types.sql",
+    "db:migrate3:local": "wrangler d1 execute work-report --local --file=./migrations/0003_work_types.sql"
   },
   "dependencies": {
     "hono": "^4.6.0"

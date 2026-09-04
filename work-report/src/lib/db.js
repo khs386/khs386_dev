@@ -296,3 +296,65 @@ export async function getSettings(db) {
   }
   return { footer: r?.footer || '', holidays }
 }
+
+/* ── 업무 유형 ─────────────────────────────────────────── */
+
+export async function listWorkTypes(db) {
+  const { results } = await db
+    .prepare('select * from work_types order by sort_order, name')
+    .all()
+  return results || []
+}
+
+export async function createWorkType(db, name) {
+  const clean = String(name || '').trim()
+  if (!clean) return { error: '업무 유형 이름을 입력해 주세요.' }
+  const dup = await db.prepare('select name from work_types where name = ?').bind(clean).first()
+  if (dup) return { error: `"${clean}" 은(는) 이미 있습니다.` }
+  const last = await db.prepare('select max(sort_order) as m from work_types').first()
+  await db
+    .prepare('insert into work_types (name, sort_order) values (?, ?)')
+    .bind(clean, (last?.m || 0) + 1)
+    .run()
+  return { ok: true, name: clean }
+}
+
+/** 이름을 바꾸면 그 유형을 쓰던 업무와 주간 항목도 함께 따라간다. */
+export async function renameWorkTypes(db, pairs) {
+  const changed = []
+  for (const { from, to } of pairs) {
+    const next = String(to || '').trim()
+    if (!next || next === from) continue
+    const dup = await db.prepare('select name from work_types where name = ?').bind(next).first()
+    if (dup) return { error: `"${next}" 은(는) 이미 있습니다.` }
+    await db.batch([
+      db.prepare('update work_types set name = ? where name = ?').bind(next, from),
+      db.prepare('update tasks set work_type = ? where work_type = ?').bind(next, from),
+      db.prepare('update weekly_items set work_type = ? where work_type = ?').bind(next, from),
+    ])
+    changed.push(next)
+  }
+  return { ok: true, changed }
+}
+
+export async function deleteWorkType(db, name) {
+  await db.prepare('delete from work_types where name = ?').bind(name).run()
+}
+
+export async function moveWorkType(db, name, dir) {
+  const row = await db.prepare('select * from work_types where name = ?').bind(name).first()
+  if (!row) return
+  const neighbour = await db
+    .prepare(
+      dir < 0
+        ? 'select * from work_types where sort_order < ? order by sort_order desc limit 1'
+        : 'select * from work_types where sort_order > ? order by sort_order limit 1'
+    )
+    .bind(row.sort_order)
+    .first()
+  if (!neighbour) return
+  await db.batch([
+    db.prepare('update work_types set sort_order = ? where name = ?').bind(neighbour.sort_order, row.name),
+    db.prepare('update work_types set sort_order = ? where name = ?').bind(row.sort_order, neighbour.name),
+  ])
+}
