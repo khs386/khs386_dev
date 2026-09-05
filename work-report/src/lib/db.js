@@ -97,10 +97,40 @@ export async function lastLogForTask(db, taskId, before) {
 /**
  * 목록에서 고른 업무를 그 날짜에 넣는다.
  *
- * 같은 업무를 이어서 적는 날이 많다. 어제 적어 둔 상태·진행률·세부내용을 오늘
- * 다시 처음부터 채우게 하지 않고, 마지막으로 적은 날의 값을 그대로 가져와
- * 바탕으로 삼는다. 처음 넣는 업무면 단위업무에 적힌 값을 쓴다.
+ * 같은 업무를 이어서 적는 날이 많다. 어제 적어 둔 상태·우선순위·진행률·마감·
+ * 기타 여부를 오늘 다시 채우게 하지 않고 그대로 가져와 바탕으로 삼는다.
+ * 처음 넣는 업무면 단위업무에 적힌 값을 쓴다.
+ *
+ * 세부내용은 가져오지 않는다. 그날 한 일은 날마다 다르고, 지운 자리에 다시
+ * 쓰는 것보다 빈 칸에서 시작하는 편이 낫다. 필요하면 화면의 [직전 내용
+ * 가져오기]로 불러온다.
  */
+/**
+ * 화면에 있는 줄들의 "직전 세부내용". 업무 하나에 한 줄씩, {업무 id: 여러 줄 글}.
+ *
+ * 줄마다 따로 물어보면 질의가 줄 수만큼 늘어난다. 한 번에 읽어 와서 업무별로
+ * 가장 최근 것만 남긴다.
+ */
+export async function prevDetails(db, taskIds, before) {
+  const ids = [...new Set((taskIds || []).filter(Boolean))]
+  if (!ids.length) return {}
+  const { results } = await db
+    .prepare(
+      `select task_id, detail_lines from daily_logs
+       where log_date < ? and task_id in (${ids.map(() => '?').join(',')})
+       order by log_date desc, created_at desc`
+    )
+    .bind(before, ...ids)
+    .all()
+  const out = {}
+  for (const r of results || []) {
+    if (out[r.task_id]) continue
+    const lines = parseLines(r.detail_lines)
+    if (lines.length) out[r.task_id] = lines.join('\n')
+  }
+  return out
+}
+
 export async function addLogFromTask(db, date, task, order) {
   const prev = await lastLogForTask(db, task.id, date)
   const src = prev || task
@@ -108,10 +138,9 @@ export async function addLogFromTask(db, date, task, order) {
     .prepare(
       `insert into daily_logs
         (id, log_date, task_id, title, detail_lines, status, priority, progress, deadline, is_misc, sort_order)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       values (?, ?, ?, ?, '[]', ?, ?, ?, ?, ?, ?)`
     )
     .bind(uuid(), date, task.id, task.title,
-          prev ? prev.detail_lines : '[]',
           src.status, src.priority, src.progress, src.deadline, bool(src.is_misc), order)
     .run()
   return { carried: !!prev }

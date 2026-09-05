@@ -365,14 +365,31 @@ ${
       ${field('마감 시한', 'deadline', l.deadline, { type: 'date' })}
     </div>
     <div class="fld" style="margin-bottom:12px">
-      <label>세부내용 · 한 줄에 하나씩 적으면 글머리로 들어갑니다</label>
+      <label class="lblrow">세부내용 · 한 줄에 하나씩 적으면 글머리로 들어갑니다
+        ${l.prev_detail
+          ? `<a href="#" class="prevfill"
+               data-prev="${esc(l.prev_detail).replace(/\n/g, '&#10;')}">직전 내용 가져오기</a>`
+          : ''}</label>
       <textarea name="detail_text" rows="3">${esc((l.detail_lines || []).join('\n'))}</textarea>
     </div>
   </form>
 </div>`
       }).join('')
     : '<p class="empty">이 날짜에 기록된 업무가 없습니다.</p>'
-}`
+}
+<script>
+// [직전 내용 가져오기] — 그 업무를 마지막으로 적은 날의 세부내용을 칸에 넣는다.
+// 적어 둔 것이 있으면 먼저 물어본다.
+document.addEventListener('click', function (e) {
+  var a = e.target.closest('a.prevfill')
+  if (!a) return
+  e.preventDefault()
+  var box = a.closest('.fld').querySelector('textarea')
+  if (box.value.trim() && !confirm('지금 적은 내용을 지우고 직전 내용으로 바꿀까요?')) return
+  box.value = a.getAttribute('data-prev')
+  box.focus()
+})
+<\/script>`
   return page({ title: '일일업무', path: '/daily', body })
 }
 

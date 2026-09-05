@@ -165,8 +165,10 @@ app.get('/daily', async (c) => {
     db.getSettings(c.env.DB),
   ])
   const used = new Set(logs.map((l) => l.task_id).filter(Boolean))
+  const prev = await db.prevDetails(c.env.DB, [...used], date)
   return html(c, dailyPage({
-    date, logs,
+    date,
+    logs: logs.map((l) => ({ ...l, prev_detail: prev[l.task_id] || '' })),
     available: tasks.filter((t) => !used.has(t.id)),
     hasTasks: tasks.length > 0,
     skip: skipReason(date, settings.holidays), today: todayKST(),
