@@ -1,5 +1,5 @@
 // 화면 여섯 개. 서버에서 HTML을 그려 보내고, 폼을 제출하면 처리 후 되돌아온다.
-import { page, esc, pill, tag, field, optionalSelect } from './layout.js'
+import { page, esc, jsq, pill, tag, field, optionalSelect } from './layout.js'
 import { dday, koreanDate, koreanWeek, barHeight } from '../lib/report/format.js'
 import { SERIES_COLOR, displayStatus } from '../lib/report/colors.js'
 import { statusTint, priorityTint, ddayTint } from './ui.js'
@@ -172,7 +172,7 @@ ${archived ? '' : form}
               <input type="hidden" name="archived" value="${t.archived ? '0' : '1'}">
               <button class="btn ghost sm">${t.archived ? '복구' : '보관'}</button></form>
             <form method="post" action="/tasks/${t.id}/delete" class="inline"
-                  onsubmit="return confirm('이 업무와 일일업무 기록을 함께 지웁니다. 계속할까요?')">
+                  onsubmit="return confirm('&quot;${jsq(t.title)}&quot; 을(를) 지웁니다. 딸린 일일업무 기록도 함께 지워집니다. 계속할까요?')">
               <button class="btn danger sm">삭제</button></form>
           </span>
         </div>`).join('')
@@ -330,7 +330,7 @@ function workTypeCard(workTypes, seriesNames) {
       <button class="btn plain sm">수정</button>
       <button class="btn danger sm" formaction="/work-types/delete" name="remove" value="${esc(t.name)}"
               formnovalidate
-              onclick="return confirm('${esc(t.name)} 을(를) 지울까요? 이 유형을 쓰던 업무는 유형이 비워집니다.')">삭제</button>
+              onclick="return confirm('&quot;${jsq(t.name)}&quot; 을(를) 지울까요? 이 유형을 쓰던 업무는 유형이 비워집니다.')">삭제</button>
     </div>`).join('')}
   </form>`
       : '<p class="empty">업무 유형이 없습니다. 아래에서 추가하세요.</p>'
@@ -399,7 +399,8 @@ ${
       <input type="hidden" name="date" value="${date}"><input type="hidden" name="dir" value="1">
       <button class="btn ghost sm"${i === logs.length - 1 ? ' disabled' : ''}>↓</button></form>
     <button class="btn plain sm" form="save-${l.id}">저장</button>
-    <form method="post" action="/daily/${l.id}/delete" class="inline">
+    <form method="post" action="/daily/${l.id}/delete" class="inline"
+          onsubmit="return confirm('&quot;${jsq(l.title)}&quot; 을(를) 이 날짜에서 지웁니다. 계속할까요?')">
       <input type="hidden" name="date" value="${date}">
       <button class="btn danger sm">삭제</button></form>
   </div></div>
@@ -503,7 +504,8 @@ export function weeklyPage({ date, weekStart, items, tasks, workTypes, saved }) 
     </div>
   </form>
   <!-- 삭제 단추는 제목 줄에 있고, 폼은 저장 폼 밖에 둔다. 폼은 겹칠 수 없다. -->
-  <form id="del-${it.id}" method="post" action="/weekly/${it.id}/delete">
+  <form id="del-${it.id}" method="post" action="/weekly/${it.id}/delete"
+        onsubmit="return confirm('&quot;${jsq(it.title)}&quot; 을(를) 이 주에서 지웁니다. 계속할까요?')">
     <input type="hidden" name="date" value="${date}">
   </form>
 </div>`
@@ -578,7 +580,7 @@ ${
         <button class="btn plain sm">저장</button>
         <button class="btn danger sm" formaction="/series/delete" name="remove" value="${esc(s.name)}"
                 formnovalidate
-                onclick="return confirm('${esc(s.name)} 을(를) 지울까요? 보고서 막대에서 빠집니다.')">삭제</button>
+                onclick="return confirm('&quot;${jsq(s.name)}&quot; 을(를) 지울까요? 보고서 막대에서 빠집니다.')">삭제</button>
       </div>
     </div>
     <div class="grid">${stageInputs(s)}</div>

@@ -6,6 +6,13 @@ export function esc(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+/**
+ * confirm('...') 안에 넣을 글. 홑따옴표가 든 이름이 와도 스크립트가 깨지지 않게
+ * 한 번 더 감싼다. 속성값은 브라우저가 먼저 풀어 주므로 esc는 그대로 둔다.
+ */
+export const jsq = (v) =>
+  esc(String(v ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"))
+
 const NAV = [
   ['/', '데일리 브리프'],
   ['/tasks', '단위업무'],
