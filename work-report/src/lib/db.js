@@ -1,5 +1,7 @@
 // D1 접근. SQLite에는 배열·불리언 타입이 없어서 여기서 앱이 쓰는 모양으로 바꿔 준다.
 
+import { STAGES, seriesTotal } from './series.js'
+
 const uuid = () => crypto.randomUUID()
 const bool = (v) => (v ? 1 : 0)
 const num = (v) => (v === '' || v === null || v === undefined ? null : Number(v))
@@ -189,7 +191,8 @@ export async function listSeries(db) {
   const { results } = await db
     .prepare('select * from series_progress order by sort_order')
     .all()
-  return results || []
+  // 총 진행률은 저장된 값이 아니라 단계값으로 매번 계산한다
+  return (results || []).map((r) => ({ ...r, total: seriesTotal(r) }))
 }
 
 /** 화면에서 고를 수 있는 색. 보고서 막대에 그대로 쓰인다. */
@@ -235,14 +238,24 @@ export async function moveSeries(db, name, dir) {
   ])
 }
 
+const pct = (v) =>
+  v === '' || v === null || v === undefined ? null : Math.max(0, Math.min(100, Number(v) || 0))
+
 export async function saveSeries(db, entries) {
   const now = new Date().toISOString()
+  const cols = STAGES.map((s) => s.key)
+  const setSql = cols.map((k) => `${k} = ?`).join(', ')
   await db.batch(
-    entries.map((e) =>
-      db
-        .prepare('update series_progress set total_progress = ?, color = ?, updated_at = ? where name = ?')
-        .bind(Math.max(0, Math.min(100, Number(e.progress) || 0)), e.color || null, now, e.name)
-    )
+    entries.map((e) => {
+      const values = cols.map((k) => pct(e[k]))
+      const row = Object.fromEntries(cols.map((k, i) => [k, values[i]]))
+      return db
+        .prepare(
+          `update series_progress set ${setSql}, total_progress = ?, color = ?, updated_at = ?
+           where name = ?`
+        )
+        .bind(...values, seriesTotal(row), e.color || null, now, e.name)
+    })
   )
 }
 

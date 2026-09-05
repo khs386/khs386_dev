@@ -3,6 +3,7 @@ import { page, esc, pill, tag, field, optionalSelect } from './layout.js'
 import { dday, koreanDate, koreanWeek, barHeight } from '../lib/report/format.js'
 import { SERIES_COLOR, displayStatus } from '../lib/report/colors.js'
 import { statusTint, priorityTint, ddayTint } from './ui.js'
+import { STAGES } from '../lib/series.js'
 
 export const STATUSES = ['예정', '시작', '진행', '완료', '보류']
 export const PRIORITIES = ['높음', '중간', '낮음']
@@ -336,7 +337,6 @@ ${section('금주 예정')}`
 /* ── 시리즈 ─────────────────────────────────────────────── */
 
 export function seriesPage({ series, palette, msg }) {
-  // 폭을 잡아 주지 않으면 한 줄에 안 들어가고 아래로 접힌다
   const colorSelect = (name, value) =>
     `<select name="color" style="width:104px" aria-label="${esc(name)} 색">` +
     palette
@@ -345,37 +345,48 @@ export function seriesPage({ series, palette, msg }) {
       .join('') +
     `</select>`
 
+  // 단계별 값을 넣으면 총 진행률이 가중치대로 계산된다.
+  const stageInputs = (s) =>
+    STAGES.map((st) => `
+      <div class="fld">
+        <label>${st.label} <span style="opacity:.6">${Math.round(st.weight * 100)}%</span></label>
+        <input type="number" min="0" max="100" name="${st.key}"
+               value="${s[st.key] === null || s[st.key] === undefined ? '' : s[st.key]}"
+               data-w="${st.weight}" aria-label="${esc(s.name)} ${st.label}">
+      </div>`).join('')
+
   const body = `
 <div class="head"><div><h1>시리즈별 개발 현황</h1>
-  <p>보고서 오른쪽 세로 막대에 쓰이는 총 진행률입니다.</p></div></div>
+  <p>단계별 진행률을 넣으면 총 진행률이 가중치대로 계산됩니다.</p></div></div>
 ${notice(msg)}
 
-<div class="card">
-  <div class="chead"><h2>진행률</h2><span class="count">${series.length}개</span></div>
-  ${
-    series.length
-      ? `<form method="post" action="/series">
-    ${series.map((s, i) => `
-    <div class="item">
-      <input type="hidden" name="name" value="${esc(s.name)}">
-      <span class="t">${esc(s.name)}</span>
-      <input type="number" name="progress" min="0" max="100" value="${s.total_progress}"
-             style="width:88px" aria-label="${esc(s.name)} 진행률">
-      ${colorSelect(s.name, s.color)}
-      <span class="count">${s.updated_at ? s.updated_at.slice(0, 10) : '미입력'}</span>
-      <button class="btn ghost sm" formaction="/series/move" name="move" value="${esc(s.name)}:-1"
-              formnovalidate${i === 0 ? ' disabled' : ''}>↑</button>
-      <button class="btn ghost sm" formaction="/series/move" name="move" value="${esc(s.name)}:1"
-              formnovalidate${i === series.length - 1 ? ' disabled' : ''}>↓</button>
-      <button class="btn danger sm" formaction="/series/delete" name="remove" value="${esc(s.name)}"
-              formnovalidate
-              onclick="return confirm('${esc(s.name)} 을(를) 지울까요? 보고서 막대에서 빠집니다.')">삭제</button>
-    </div>`).join('')}
-    <div class="row" style="margin-top:16px"><button class="btn">저장</button></div>
-  </form>`
-      : '<p class="empty">시리즈가 없습니다. 아래에서 추가하세요.</p>'
-  }
-</div>
+${
+  series.length
+    ? `<form method="post" action="/series">
+  ${series.map((s, i) => `
+  <div class="card" data-series>
+    <div class="chead">
+      <h2>${esc(s.name)}</h2>
+      <div class="row">
+        <span class="pill" data-total style="background:${s.color || '#8e8e93'}">${s.total}%</span>
+        <input type="hidden" name="name" value="${esc(s.name)}">
+        ${colorSelect(s.name, s.color)}
+        <button class="btn ghost sm" formaction="/series/move" name="move" value="${esc(s.name)}:-1"
+                formnovalidate${i === 0 ? ' disabled' : ''}>↑</button>
+        <button class="btn ghost sm" formaction="/series/move" name="move" value="${esc(s.name)}:1"
+                formnovalidate${i === series.length - 1 ? ' disabled' : ''}>↓</button>
+        <button class="btn danger sm" formaction="/series/delete" name="remove" value="${esc(s.name)}"
+                formnovalidate
+                onclick="return confirm('${esc(s.name)} 을(를) 지울까요? 보고서 막대에서 빠집니다.')">삭제</button>
+      </div>
+    </div>
+    <div class="grid">${stageInputs(s)}</div>
+    <p class="count" style="margin:0">${s.updated_at ? s.updated_at.slice(0, 10) + ' 갱신' : '아직 저장 전'}</p>
+  </div>`).join('')}
+  <div class="row" style="margin-bottom:18px"><button class="btn">저장</button></div>
+</form>`
+    : '<p class="empty">시리즈가 없습니다. 아래에서 추가하세요.</p>'
+}
 
 <div class="card">
   <div class="chead"><h2>시리즈 추가</h2></div>
@@ -395,15 +406,29 @@ ${notice(msg)}
     ${series.map((s) => {
       const c = s.color || SERIES_COLOR[s.name] || '#378ADD'
       return `<div class="bar">
-        <div class="v" style="color:${c}">${s.total_progress}%</div>
-        <div class="stem" style="background:${c};height:${barHeight(s.total_progress)}px"></div>
+        <div class="v" style="color:${c}">${s.total}%</div>
+        <div class="stem" style="background:${c};height:${barHeight(s.total)}px"></div>
         <div class="n">${esc(s.name)}</div></div>`
     }).join('')}
   </div>`
       : '<p class="empty">표시할 시리즈가 없습니다.</p>'
   }
-</div>`
-  return page({ title: '시리즈', path: '/series', body, narrow: true })
+</div>
+
+<script>
+// 저장하기 전에도 총 진행률이 바로 보이도록 화면에서 같은 식으로 계산한다.
+document.querySelectorAll('[data-series]').forEach(function (card) {
+  var badge = card.querySelector('[data-total]')
+  var inputs = card.querySelectorAll('input[data-w]')
+  function paint() {
+    var sum = 0
+    inputs.forEach(function (el) { sum += (Number(el.value) || 0) * Number(el.dataset.w) })
+    badge.textContent = Math.round(sum) + '%'
+  }
+  inputs.forEach(function (el) { el.addEventListener('input', paint) })
+})
+</script>`
+  return page({ title: '시리즈', path: '/series', body })
 }
 
 /* ── 보고서 ─────────────────────────────────────────────── */

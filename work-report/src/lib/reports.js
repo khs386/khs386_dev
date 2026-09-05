@@ -46,7 +46,7 @@ async function common(env, database) {
   ])
   return {
     settings,
-    series: series.map((s) => ({ name: s.name, progress: s.total_progress, color: s.color })),
+    series: series.map((s) => ({ name: s.name, progress: s.total, color: s.color })),
   }
 }
 

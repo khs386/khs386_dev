@@ -8,6 +8,7 @@ import {
   todayKST, skipReason, generateReport, filenameFor,
 } from './lib/reports.js'
 import { weekStart, dday } from './lib/report/format.js'
+import { STAGES } from './lib/series.js'
 import { loginPage, FAVICON } from './views/layout.js'
 import { privacyPage, termsPage } from './views/legal.js'
 import {
@@ -369,11 +370,15 @@ app.get('/series', async (c) =>
 app.post('/series', async (c) => {
   const form = await c.req.formData()
   const names = form.getAll('name')
-  const values = form.getAll('progress')
   const colors = form.getAll('color')
+  const stages = Object.fromEntries(STAGES.map((s) => [s.key, form.getAll(s.key)]))
   await db.saveSeries(
     c.env.DB,
-    names.map((name, i) => ({ name, progress: values[i], color: colors[i] }))
+    names.map((name, i) => ({
+      name,
+      color: colors[i],
+      ...Object.fromEntries(STAGES.map((s) => [s.key, stages[s.key][i]])),
+    }))
   )
   return back(c, '/series', '저장했습니다.')
 })

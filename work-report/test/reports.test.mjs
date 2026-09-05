@@ -149,3 +149,27 @@ test('주간 보고서는 이미 완결 문서라 감싸지 않는다', () => {
   const doc = read('golden/weekly_report_2026-09-04.html')
   assert.equal(wrapDocument('weekly', doc, '2026-09-04'), doc)
 })
+
+/* ── 시리즈 총 진행률 ─────────────────────────────────────── */
+
+test('총 진행률이 노션 수식과 같은 값을 낸다', async () => {
+  const { STAGES, seriesTotal } = await import('../src/lib/series.js')
+  const row = (vals) => Object.fromEntries(STAGES.map((s, i) => [s.key, vals[i]]))
+
+  // 가중치 합은 1.00이어야 한다
+  assert.equal(Number(STAGES.reduce((a, s) => a + s.weight, 0).toFixed(2)), 1)
+
+  // 노션 [시리즈별 개발 현황] 실제 값으로 검산
+  //           기획 주제 권별 본문 그림 부록 부록그림 음원 감수 세이펜
+  assert.equal(seriesTotal(row([100, 100, 100, 100, 100, 100, 20, 10, 10, 10])), 79)
+  assert.equal(seriesTotal(row([100, 100, 100, 100, null, null, null, null, null, null])), 40)
+  assert.equal(seriesTotal(row([100, 100, 100, 15, null, 100, 100, 100, 100, 100])), 62)
+  assert.equal(seriesTotal(row([100, 100, 100, 100, 100, 100, 100, 100, 100, 100])), 100)
+  assert.equal(seriesTotal(row([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])), 0)
+})
+
+test('단계를 하나도 넣지 않으면 예전에 직접 넣은 값을 쓴다', async () => {
+  const { seriesTotal } = await import('../src/lib/series.js')
+  assert.equal(seriesTotal({ total_progress: 62 }), 62)
+  assert.equal(seriesTotal({ total_progress: 62, plan: 100 }), 5)
+})
