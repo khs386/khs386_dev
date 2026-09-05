@@ -621,6 +621,10 @@ function prepareBriefHtml(html) {
     'h2{font-size:17px !important;font-weight:700 !important;letter-spacing:-.02em !important}' +
     'h3,h4{font-size:15px !important;font-weight:600 !important;letter-spacing:-.018em !important}' +
     'b,strong{font-weight:600 !important}' +
+    // 문서가 저 혼자 있을 때를 생각해 위쪽에 큰 여백을 두는데, 액자 안에서는
+    // 카드 테두리와 제목 사이가 허전해진다. 위 여백만 줄인다.
+    'body{padding-top:14px !important;margin-top:0 !important}' +
+    'body>*:first-child{margin-top:0 !important}' +
     '</style>' +
     BRIEF_FIXUP +
     // 액자 안에서도 스크롤이 생기면 세로 막대가 둘이 된다. 문서가 자기 높이를

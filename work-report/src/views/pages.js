@@ -82,7 +82,7 @@ export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, ar
   }
   const form = `
 <div class="card">
-  <div class="chead"><h2>${editing ? '업무 수정' : '업무 추가'}</h2></div>
+  <div class="chead"><h2>${editing ? '단위업무 수정' : '단위업무 추가'}</h2></div>
   <form method="post" action="${editing ? `/tasks/${editing.id}/save` : '/tasks/new'}">
     <div class="row bottom" style="margin-bottom:12px">
       <div class="fld grow"><label>업무명</label>
@@ -112,7 +112,7 @@ export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, ar
 </div>
 ${archived ? '' : form}
 <div class="card">
-  <div class="chead"><h2>${archived ? '보관함' : '업무 목록'}</h2>
+  <div class="chead"><h2>${archived ? '보관함' : '단위업무 목록'}</h2>
     <span class="count">${tasks.length}건</span></div>
   ${
     tasks.length
