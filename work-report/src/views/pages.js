@@ -18,7 +18,7 @@ const notice = (msg, kind) =>
 
 /* ── 오늘 ───────────────────────────────────────────────── */
 
-export function todayPage({ today, logs, weekly, series, soon, skip, brief }) {
+export function todayPage({ today, logs, weekly, series, soon, brief }) {
   const stale = series.filter((s) => !s.updated_at)
   const body = `
 <div class="head">
@@ -28,7 +28,9 @@ export function todayPage({ today, logs, weekly, series, soon, skip, brief }) {
     <a class="btn ghost" href="/weekly">주간업무</a>
   </div>
 </div>
-${skip ? notice(`오늘은 <b>${skip}</b>입니다. 자동 생성은 건너뜁니다.`, 'warn') : ''}
+<!-- 주말·공휴일 알림은 여기 두지 않는다. 그 말은 보고서 자동 생성에 관한
+     것인데, 모닝브리프는 주말에도 오므로 이 화면에서는 어긋나 보인다.
+     보고서를 쓰는 일일업무 화면에만 둔다. -->
 ${stale.length ? notice('시리즈 진행률이 아직 입력되지 않았습니다. <a href="/series">지금 입력하기</a>', 'warn') : ''}
 
 ${briefCard(brief, today)}

@@ -72,12 +72,11 @@ app.use('*', async (c, next) => {
 
 app.get('/', async (c) => {
   const today = todayKST()
-  const [logs, weekly, series, tasks, settings, brief] = await Promise.all([
+  const [logs, weekly, series, tasks, brief] = await Promise.all([
     db.listLogs(c.env.DB, today),
     db.listWeekly(c.env.DB, weekStart(today)),
     db.listSeries(c.env.DB),
     db.listTasks(c.env.DB),
-    db.getSettings(c.env.DB),
     db.getBrief(c.env.DB, today),
   ])
   const soon = tasks.filter((t) => t.deadline).slice(0, 5)
@@ -87,7 +86,6 @@ app.get('/', async (c) => {
       prev: weekly.filter((w) => w.kind === '전주 실적').length,
       plan: weekly.filter((w) => w.kind === '금주 예정').length,
     },
-    skip: skipReason(today, settings.holidays),
   }))
 })
 
