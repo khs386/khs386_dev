@@ -64,9 +64,19 @@ test('D-day 색은 3단계이고 마감 없으면 회색이다', () => {
 test('날짜 표기와 주차 계산이 규칙을 따른다', () => {
   assert.equal(koreanDate('2026-09-04'), '2026년 9월 4일 (금)')
   assert.equal(koreanDate('2026-01-01'), '2026년 1월 1일 (목)')
+  // 주는 월요일에 시작하고, 두 달에 걸친 주는 목요일이 있는 달로 센다.
   assert.equal(koreanWeek('2026-09-04'), '2026년 9월 1주차')
   assert.equal(koreanWeek('2026-09-08'), '2026년 9월 2주차')
-  assert.equal(koreanWeek('2026-09-30'), '2026년 9월 5주차')
+  // 8월 31일(월)~9월 6일(일)은 목요일이 9월 3일이라 한 주 내내 9월 1주차다.
+  assert.equal(koreanWeek('2026-08-31'), '2026년 9월 1주차')
+  assert.equal(koreanWeek('2026-09-06'), '2026년 9월 1주차')
+  // 9월 7일(월)부터 새 주가 시작된다.
+  assert.equal(koreanWeek('2026-09-07'), '2026년 9월 2주차')
+  // 9월 28일(월)~10월 4일(일)은 목요일이 10월 1일이라 10월 1주차다.
+  assert.equal(koreanWeek('2026-09-30'), '2026년 10월 1주차')
+  // 5월 1일(금)은 4월 27일에 시작한 주에 든다.
+  assert.equal(koreanWeek('2026-05-01'), '2026년 4월 5주차')
+  assert.equal(koreanWeek('2026-05-04'), '2026년 5월 1주차')
   assert.equal(dday('2026-09-07', '2026-09-04'), 3)
   assert.equal(dday(null, '2026-09-04'), null)
 })

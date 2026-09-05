@@ -35,11 +35,32 @@ export function koreanDate(iso) {
 }
 
 /** '2026-09-04' → '2026년 9월 1주차' — 주차 = (일 - 1) // 7 + 1 */
+const DAY = 86400000
+
+/** 그 날이 든 주(월~일)의 목요일. 월요일이면 사흘 뒤, 일요일이면 사흘 전. */
+function thursdayOf(d) {
+  const dow = (d.getUTCDay() + 6) % 7 // 월=0 … 일=6
+  return new Date(d.getTime() + (3 - dow) * DAY)
+}
+
+/**
+ * 몇 월 몇째 주인지 적는다. 주는 월요일에 시작한다.
+ *
+ * 한 주가 두 달에 걸치면 그 주의 목요일이 있는 달로 센다. 그래서 한 주는 어느
+ * 날을 고르든 언제나 같은 이름으로 나온다. 예를 들어 8월 31일(월)부터 9월
+ * 6일(일)까지는 목요일이 9월 3일이므로 모두 [9월 1주차]이고, 9월 7일(월)부터는
+ * [9월 2주차]다.
+ */
 export function koreanWeek(iso) {
   const d = toDate(iso)
   if (!d) return ''
-  const week = Math.floor((d.getUTCDate() - 1) / 7) + 1
-  return `${d.getUTCFullYear()}년 ${d.getUTCMonth() + 1}월 ${week}주차`
+  const thu = thursdayOf(d)
+  const y = thu.getUTCFullYear()
+  const m = thu.getUTCMonth()
+  const first = new Date(Date.UTC(y, m, 1))
+  const firstThu = new Date(first.getTime() + ((3 - ((first.getUTCDay() + 6) % 7) + 7) % 7) * DAY)
+  const week = Math.round((thu - firstThu) / (7 * DAY)) + 1
+  return `${y}년 ${m + 1}월 ${week}주차`
 }
 
 /** 해당 날짜가 속한 주의 월요일 */
