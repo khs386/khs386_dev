@@ -367,14 +367,14 @@ ${skip ? notice(`${date === today ? '오늘' : '이 날'}은 <b>${skip}</b>입�
   <form method="post" action="/daily/add" class="row">
     <input type="hidden" name="date" value="${date}">
     <select name="task_id" class="grow">
-      <option value="">업무 목록에서 고르기…</option>
+      <option value="">업무 목록에서 선택</option>
       ${available.map((t) => `<option value="${t.id}">${esc(t.title)}</option>`).join('')}
     </select>
     <button class="btn"${available.length ? '' : ' disabled'}>추가</button>
   </form>
   <form method="post" action="/daily/add-free" class="row" style="margin-top:9px">
     <input type="hidden" name="date" value="${date}">
-    <input name="title" class="grow" placeholder="목록에 없는 업무를 직접 적기 (예: 기타 사항)">
+    <input name="title" class="grow" placeholder="직접 입력 (예: 기타 사항)">
     <button class="btn ghost">직접 추가</button>
   </form>
   ${hasTasks ? '' : '<p class="count" style="margin-top:8px">아직 업무가 없습니다. <a href="/tasks">업무 화면</a>에서 먼저 등록하세요.</p>'}
@@ -465,7 +465,7 @@ export function weeklyPage({ date, weekStart, items, tasks, workTypes, saved }) 
     <input type="hidden" name="date" value="${date}">
     <input type="hidden" name="kind" value="${kind}">
     <select name="task_id" class="grow">
-      <option value="">업무 목록에서 고르기…</option>
+      <option value="">업무 목록에서 선택</option>
       ${tasks.map((t) => `<option value="${t.id}">${esc(t.title)}</option>`).join('')}
     </select>
     <button class="btn"${tasks.length ? '' : ' disabled'}>추가</button>
@@ -473,7 +473,7 @@ export function weeklyPage({ date, weekStart, items, tasks, workTypes, saved }) 
   <form method="post" action="/weekly/add-free" class="row" style="margin-top:9px">
     <input type="hidden" name="date" value="${date}">
     <input type="hidden" name="kind" value="${kind}">
-    <input name="title" class="grow" placeholder="직접 적기">
+    <input name="title" class="grow" placeholder="직접 입력">
     <button class="btn ghost">직접 추가</button>
   </form>`
 
