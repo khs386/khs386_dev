@@ -86,8 +86,15 @@ export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, ar
 <div class="card">
   <div class="chead"><h2>${editing ? '업무 수정' : '업무 추가'}</h2></div>
   <form method="post" action="${editing ? `/tasks/${editing.id}/save` : '/tasks/new'}">
-    <div class="fld" style="margin-bottom:10px"><label>업무명</label>
-      <input name="title" value="${esc(f.title)}" placeholder="예: 꼬마생각 샘플권 감수본 확인" required></div>
+    <div class="row bottom" style="margin-bottom:12px">
+      <div class="fld grow"><label>업무명</label>
+        <input name="title" value="${esc(f.title)}" placeholder="예: 꼬마생각 샘플권 감수본 확인" required></div>
+      <label class="chk">
+        <input type="checkbox" name="is_misc" value="1"${f.is_misc ? ' checked' : ''}>
+        <span>기타 사항으로 표시 (요약 카드 집계에서 제외)</span></label>
+      <button class="btn">${editing ? '수정 저장' : '추가'}</button>
+      ${editing ? '<a class="btn ghost" href="/tasks">취소</a>' : ''}
+    </div>
     <div class="grid one-line">
       ${optionalSelect('시리즈', 'series', f.series, seriesNames)}
       ${optionalSelect('업무 유형', 'work_type', f.work_type, workTypes)}
@@ -95,13 +102,6 @@ export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, ar
       ${field('우선순위', 'priority', f.priority, { options: PRIORITIES })}
       ${field('진행률 (%)', 'progress', f.progress, { type: 'number', min: 0, max: 100 })}
       ${field('마감 시한', 'deadline', f.deadline, { type: 'date' })}
-    </div>
-    <label class="row" style="margin:4px 0 12px;font-size:13px">
-      <input type="checkbox" name="is_misc" value="1"${f.is_misc ? ' checked' : ''} style="width:auto">
-      <span>기타 사항으로 표시 (요약 카드 집계에서 제외)</span></label>
-    <div class="row">
-      <button class="btn">${editing ? '수정 저장' : '추가'}</button>
-      ${editing ? '<a class="btn ghost" href="/tasks">취소</a>' : ''}
     </div>
   </form>
 </div>`

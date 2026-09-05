@@ -107,6 +107,11 @@ nav.top .right{margin-left:auto}
 .count{font-size:13px; color:var(--text-3)}
 
 .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+/* 라벨이 위에 붙은 칸과 버튼을 한 줄에 둘 때는 아래를 맞춰야 나란히 보인다. */
+.row.bottom{align-items:flex-end; gap:12px}
+.chk{display:flex; align-items:center; gap:8px; font-size:13px;
+  white-space:nowrap; padding-bottom:9px}
+.chk input{width:auto; flex:none}
 .row>*{flex:0 0 auto}
 .grow{flex:1 1 200px}
 .spacer{flex:1 1 auto}
