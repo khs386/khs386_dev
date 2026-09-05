@@ -525,7 +525,7 @@ app.get('/brief', async (c) => {
 /**
  * 브리프 서식 바로잡기. 문서를 만드는 쪽이 옛 서식으로 되돌아가도 화면은 맞게 나온다.
  *
- * 네 가지를 한다.
+ * 여섯 가지를 한다.
  *   1. 버튼 글자의 "초안 잡기"를 "초안잡기"로 붙인다.
  *   2. btn-reply / btn-remind 클래스가 없으면 글자를 보고 붙인다. 그래야 앱이
  *      정한 색과 밑줄 없는 모양이 걸린다. 문서가 직접 넣은 style은 걷어 낸다.
@@ -535,7 +535,9 @@ app.get('/brief', async (c) => {
  *   4. 남은 버튼을 문장 아래에서 항목 오른쪽으로 옮긴다. 항목은 버튼 글자를 뺀
  *      본문이 열 자 넘게 담긴 가장 작은 조상으로 찾고, 그 안에 절대 위치로 세워
  *      원래 짜임새는 건드리지 않는다. 좁은 화면에서는 아래에 그대로 둔다.
- *   5. 맨 위 여백을 잰 뒤 14px만 남기고 깎는다. 문서는 저 혼자 열릴 때를 생각해
+ *   5. 다크 모드 단추를 지운다. 액자 안에서는 앱 화면의 밝기를 따라야 해서
+ *      문서 혼자 어두워지면 오히려 어긋난다.
+ *   6. 맨 위 여백을 잰 뒤 20px만 남기고 깎는다. 문서는 저 혼자 열릴 때를 생각해
  *      위를 넓게 비우는데, 액자 안에서는 카드 테두리와 제목 사이가 허전하다.
  *      여백이 body에 있는지 바깥 상자에 있는지 문서마다 다르므로, 재서 그만큼만
  *      덜어 낸다. 테두리나 바탕색이 있는 상자를 만나면 거기서 멈춘다 — 그건
@@ -587,13 +589,23 @@ function run(){
     if(getComputedStyle(it).position==='static')it.style.position='relative';
     it.appendChild(col);
     it.style.paddingRight=(col.offsetWidth+18)+'px'})}
+function nodark(){
+  var L=document.querySelectorAll('div,p,button,a,span');
+  for(var i=0;i<L.length;i++){
+    var e=L[i],t=(e.textContent||'').replace(/\\s+/g,'');
+    if(!/^(다크모드|라이트모드|어두운모드|밝은모드)$/.test(t))continue;
+    var h=e.parentElement; if(!h)return;
+    h.removeChild(e);
+    while(h&&h!==document.body&&!h.textContent.trim()&&!h.querySelector('img,svg')){
+      var u=h.parentElement; u.removeChild(h); h=u}
+    return}}
 function bare(n){var c=getComputedStyle(n);
   return c.borderTopWidth==='0px'&&c.backgroundColor==='rgba(0, 0, 0, 0)'}
 function trim(){
   var el=document.body,g=0;
   while(el&&g++<4){
     var f=el.firstElementChild; if(!f)return;
-    var ex=f.getBoundingClientRect().top-14;
+    var ex=f.getBoundingClientRect().top-20;
     if(ex>1){
       var pt=parseFloat(getComputedStyle(el).paddingTop)||0,c=Math.min(pt,ex);
       if(c>0){el.style.paddingTop=(pt-c)+'px';ex-=c}
@@ -601,9 +613,9 @@ function trim(){
         if(d>0){f.style.marginTop=(mt-d)+'px';ex-=d}}
       if(ex<=1)return}
     if(!bare(f)||!f.firstElementChild)return;
-    if(f.firstElementChild.getBoundingClientRect().top-14<=1)return;
+    if(f.firstElementChild.getBoundingClientRect().top-20<=1)return;
     el=f}}
-function all(){run();trim()}
+function all(){nodark();run();trim()}
 addEventListener('load',all);setTimeout(all,200);setTimeout(all,900);
 })()<\/script>`
 
