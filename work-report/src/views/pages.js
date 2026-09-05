@@ -128,7 +128,9 @@ ${archived ? '' : form}
           <span class="c">${t.work_type ? tag(t.work_type) : ''}</span>
           <span class="c">${pill(displayStatus(t.status), statusTint(t.status))}</span>
           <span class="c">${pill(t.priority, priorityTint(t.priority))}</span>
-          <span class="c">${tag(t.progress === null ? '진행률 없음' : t.progress + '%')}</span>
+          <!-- 칸 이름이 이미 진행률이라 값에 그 말을 되풀이하지 않는다. 그만큼을
+               날짜 칸에 준다 — 날짜가 잘리면 무슨 날인지 알 수 없다. -->
+          <span class="c">${tag(t.progress === null ? '없음' : t.progress + '%')}</span>
           <span class="c">${tag(t.deadline || '마감 없음')}</span>
           <span class="acts">
             <a class="btn ghost sm" href="/tasks?edit=${t.id}">수정</a>
