@@ -18,7 +18,7 @@ const notice = (msg, kind) =>
 
 /* ── 오늘 ───────────────────────────────────────────────── */
 
-export function todayPage({ today, logs, weekly, series, soon, skip }) {
+export function todayPage({ today, logs, weekly, series, soon, skip, brief }) {
   const stale = series.filter((s) => !s.updated_at)
   const body = `
 <div class="head">
@@ -30,6 +30,8 @@ export function todayPage({ today, logs, weekly, series, soon, skip }) {
 </div>
 ${skip ? notice(`오늘은 <b>${skip}</b>입니다. 자동 생성은 건너뜁니다.`, 'warn') : ''}
 ${stale.length ? notice('시리즈 진행률이 아직 입력되지 않았습니다. <a href="/series">지금 입력하기</a>', 'warn') : ''}
+
+${briefCard(brief, today)}
 
 <div class="card">
   <div class="chead"><h2>오늘 기록한 업무</h2><span class="count">${logs.length}건</span></div>
@@ -138,6 +140,98 @@ ${archived ? '' : form}
 </div>
 ${archived ? '' : workTypeCard(workTypes)}`
   return page({ title: '단위업무', path: '/tasks', body })
+}
+
+/* ── 모닝브리프 ─────────────────────────────────────────── */
+
+/** D1은 UTC로 적는다. 화면에는 한국 시각으로 보여 준다. */
+function kstTime(stamp) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(String(stamp || ''))
+  if (!m) return ''
+  const t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) + 9 * 3600 * 1000
+  const d = new Date(t)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
+}
+
+const briefCount = (n, label) =>
+  `<div class="bnum"><span class="bn">${n === null || n === undefined ? '–' : n}</span>` +
+  `<span class="bl">${label}</span></div>`
+
+/** 오늘현황 맨 위 칸. 아침에 온 브리프의 숫자만 보여주고 본문은 /brief 에서 연다. */
+function briefCard(brief, today) {
+  if (!brief) {
+    return `
+<div class="card">
+  <div class="chead"><h2>모닝브리프</h2><span class="count">${koreanDate(today)}</span></div>
+  <p class="empty">오늘 브리프가 아직 오지 않았습니다.
+    <a href="/brief">지난 브리프 보기</a></p>
+</div>`
+  }
+  return `
+<div class="card">
+  <div class="chead"><h2>모닝브리프</h2>
+    <span class="count">${kstTime(brief.created_at)} 도착</span></div>
+  ${brief.headline ? `<p class="bhead">${esc(brief.headline)}</p>` : ''}
+  <div class="brow">
+    ${briefCount(brief.events, '오늘 일정')}
+    ${briefCount(brief.todo, '해야 할 일')}
+    ${briefCount(brief.done, '정리된 일')}
+  </div>
+  <div class="row" style="margin-top:14px">
+    <a class="btn" href="/brief">모닝브리프 열기</a>
+    <a class="btn ghost" href="/brief/raw?date=${brief.brief_date}"
+       target="_blank" rel="noreferrer">새 탭에서 크게 보기</a>
+  </div>
+</div>`
+}
+
+/** 브리프 보는 화면. 받아 온 문서는 iframe 안에 가둬서 띄운다. */
+export function briefPage({ date, brief, history, today }) {
+  const body = `
+<div class="head">
+  <div><h1>모닝브리프</h1><p>${koreanDate(date)}</p></div>
+  <form method="get" action="/brief" class="row">
+    <input type="date" name="date" value="${date}" max="${today}"
+           style="width:170px" onchange="this.form.submit()">
+    ${brief ? `<a class="btn ghost" href="/brief/raw?date=${date}"
+       target="_blank" rel="noreferrer">새 탭에서 크게 보기</a>` : ''}
+  </form>
+</div>
+
+${
+  brief
+    ? `<div class="card">
+        <div class="chead"><h2>${brief.headline ? esc(brief.headline) : '브리프'}</h2>
+          <span class="count">${kstTime(brief.created_at)} 도착</span></div>
+        <div class="brow" style="margin-bottom:14px">
+          ${briefCount(brief.events, '오늘 일정')}
+          ${briefCount(brief.todo, '해야 할 일')}
+          ${briefCount(brief.done, '정리된 일')}
+        </div>
+        <iframe class="brief" title="모닝브리프" src="/brief/raw?date=${date}"
+                sandbox="allow-scripts"></iframe>
+      </div>`
+    : `<p class="empty">${koreanDate(date)} 브리프가 없습니다.
+        아침마다 클라우드의 Claude가 만들어 보냅니다.</p>`
+}
+
+<div class="card">
+  <div class="chead"><h2>지난 브리프</h2><span class="count">최근 30일</span></div>
+  ${
+    history.length
+      ? history.map((b) => `<div class="item">
+          ${tag(b.brief_date)}
+          <span class="t">${b.headline ? esc(b.headline) : '브리프'}</span>
+          ${tag(`일정 ${b.events ?? '–'}`)}
+          ${tag(`해야 할 일 ${b.todo ?? '–'}`)}
+          <span class="spacer"></span>
+          <a class="btn ghost sm" href="/brief?date=${b.brief_date}">열기</a>
+        </div>`).join('')
+      : '<p class="empty">아직 받은 브리프가 없습니다.</p>'
+  }
+</div>`
+  return page({ title: '모닝브리프', path: '/brief', body })
 }
 
 /** 업무 유형 관리. 이름을 바꾸면 그 유형을 쓰던 업무도 함께 따라간다. */

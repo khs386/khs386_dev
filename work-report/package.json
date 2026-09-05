@@ -14,7 +14,9 @@
     "db:migrate3": "wrangler d1 execute work-report --remote --file=./migrations/0003_work_types.sql",
     "db:migrate3:local": "wrangler d1 execute work-report --local --file=./migrations/0003_work_types.sql",
     "db:migrate4": "wrangler d1 execute work-report --remote --file=./migrations/0004_series_stages.sql",
-    "db:migrate4:local": "wrangler d1 execute work-report --local --file=./migrations/0004_series_stages.sql"
+    "db:migrate4:local": "wrangler d1 execute work-report --local --file=./migrations/0004_series_stages.sql",
+    "db:migrate5": "wrangler d1 execute work-report --remote --file=./migrations/0005_briefs.sql",
+    "db:migrate5:local": "wrangler d1 execute work-report --local --file=./migrations/0005_briefs.sql"
   },
   "dependencies": {
     "hono": "^4.6.0"

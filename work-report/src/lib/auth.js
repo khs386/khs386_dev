@@ -55,3 +55,14 @@ export function checkPassword(env, given) {
   if (!env.APP_PASSWORD) return false
   return safeEqual(String(given || ''), env.APP_PASSWORD)
 }
+
+/**
+ * 모닝브리프를 넣을 때 쓰는 전용 열쇠.
+ *
+ * 앱 비밀번호와는 따로 둔다. 이 열쇠로 할 수 있는 일은 브리프를 넣는 것 하나뿐이라,
+ * 새어 나가도 업무 기록을 읽거나 고치지는 못한다.
+ */
+export function checkBriefToken(env, given) {
+  if (!env.BRIEF_TOKEN) return false
+  return safeEqual(String(given || ''), env.BRIEF_TOKEN)
+}

@@ -371,3 +371,34 @@ export async function moveWorkType(db, name, dir) {
     db.prepare('update work_types set sort_order = ? where name = ?').bind(row.sort_order, neighbour.name),
   ])
 }
+
+/* ── 모닝브리프 ─────────────────────────────────────────── */
+
+/** 하루에 한 건. 같은 날짜로 다시 오면 덮어쓴다. */
+export async function saveBrief(db, b) {
+  await db
+    .prepare(
+      `insert into briefs (brief_date, html, events, todo, done, headline, source, created_at)
+       values (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+       on conflict(brief_date) do update set
+         html = excluded.html, events = excluded.events, todo = excluded.todo,
+         done = excluded.done, headline = excluded.headline, source = excluded.source,
+         created_at = datetime('now')`
+    )
+    .bind(b.date, b.html, num(b.events), num(b.todo), num(b.done), str(b.headline), str(b.source))
+    .run()
+}
+
+export const getBrief = (db, date) =>
+  db.prepare('select * from briefs where brief_date = ?').bind(date).first()
+
+/** 목록에서는 html을 빼고 읽는다. 한 건이 수백 KB라 다 읽으면 느리다. */
+export const listBriefs = (db, limit = 30) =>
+  db
+    .prepare(
+      `select brief_date, events, todo, done, headline, created_at
+         from briefs order by brief_date desc limit ?`
+    )
+    .bind(limit)
+    .all()
+    .then((r) => r.results || [])

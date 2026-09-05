@@ -145,6 +145,23 @@ APP_PASSWORD=아무거나
 SESSION_SECRET=아무거나
 ```
 
+## 모닝브리프
+
+아침마다 클라우드의 Claude가 구글 캘린더·Gmail을 읽어 브리프를 쓰고 앱으로 보냅니다.
+앱은 받아서 보여주기만 합니다 — 앱 자신은 캘린더도 메일도 읽지 않습니다.
+
+- 받는 문: `POST /api/brief` · 헤더 `Authorization: Bearer <BRIEF_TOKEN>`
+- 본문(JSON): `date`(YYYY-MM-DD) · `html`(브리프 한 장) · `events` · `todo` · `done` ·
+  `headline`(한 줄 요약) · `source`
+- 같은 날짜로 다시 보내면 덮어씁니다. `html`은 900KB까지 받습니다.
+- 보기: 오늘현황 맨 위 칸, 또는 `/brief` (날짜별·지난 30일)
+
+`BRIEF_TOKEN`은 앱 비밀번호와 별개입니다. 이 열쇠로 할 수 있는 일은 브리프를 넣는
+것 하나뿐이라, 새어 나가도 업무 기록을 읽거나 고치지는 못합니다.
+
+받아 온 브리프는 `iframe`에 `sandbox="allow-scripts"`로 가둬서 띄웁니다. 브리프 안의
+스크립트는 자기 안에서만 돌고 앱 화면이나 쿠키에는 닿지 못합니다.
+
 ## 자동 생성
 
 `wrangler.toml`의 `[triggers]`에 들어 있어서 배포하면 함께 등록됩니다.

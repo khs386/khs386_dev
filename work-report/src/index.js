@@ -2,7 +2,7 @@
 // 화면(GET)과 폼 처리(POST)를 모두 이 워커가 맡고, 정해진 시각에 스스로 깨어나 보고서를 만든다.
 import { Hono } from 'hono'
 import * as db from './lib/db.js'
-import { isLoggedIn, makeSessionCookie, clearSessionCookie, checkPassword } from './lib/auth.js'
+import { isLoggedIn, makeSessionCookie, clearSessionCookie, checkPassword, checkBriefToken } from './lib/auth.js'
 import { driveConfigured, uploadHtml } from './lib/drive.js'
 import {
   todayKST, skipReason, generateReport, filenameFor,
@@ -12,7 +12,7 @@ import { STAGES } from './lib/series.js'
 import { loginPage, FAVICON } from './views/layout.js'
 import { privacyPage, termsPage } from './views/legal.js'
 import {
-  todayPage, tasksPage, dailyPage, weeklyPage, seriesPage, reportsPage,
+  todayPage, tasksPage, dailyPage, weeklyPage, seriesPage, reportsPage, briefPage,
 } from './views/pages.js'
 
 const app = new Hono()
@@ -61,7 +61,7 @@ app.post('/logout', (c) => {
 })
 
 // 로그인 화면 말고는 전부 확인한다.
-const PUBLIC = ['/login', '/privacy', '/terms', '/favicon.svg', '/favicon.ico']
+const PUBLIC = ['/login', '/privacy', '/terms', '/favicon.svg', '/favicon.ico', '/api/brief']
 app.use('*', async (c, next) => {
   if (PUBLIC.includes(c.req.path)) return next()
   if (!(await isLoggedIn(c.req.raw, c.env))) return c.redirect('/login')
@@ -72,16 +72,17 @@ app.use('*', async (c, next) => {
 
 app.get('/', async (c) => {
   const today = todayKST()
-  const [logs, weekly, series, tasks, settings] = await Promise.all([
+  const [logs, weekly, series, tasks, settings, brief] = await Promise.all([
     db.listLogs(c.env.DB, today),
     db.listWeekly(c.env.DB, weekStart(today)),
     db.listSeries(c.env.DB),
     db.listTasks(c.env.DB),
     db.getSettings(c.env.DB),
+    db.getBrief(c.env.DB, today),
   ])
   const soon = tasks.filter((t) => t.deadline).slice(0, 5)
   return html(c, todayPage({
-    today, logs, series, soon,
+    today, logs, series, soon, brief,
     weekly: {
       prev: weekly.filter((w) => w.kind === '전주 실적').length,
       plan: weekly.filter((w) => w.kind === '금주 예정').length,
@@ -460,6 +461,61 @@ app.get('/reports/download', async (c) => {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Content-Disposition': `attachment; filename="${filenameFor(kind, date)}"`,
+    },
+  })
+})
+
+/* ── 모닝브리프 ─────────────────────────────────────────── */
+
+// 아침마다 클라우드의 Claude가 캘린더·메일을 읽고 브리프를 써서 이리로 보낸다.
+// 앱은 받아서 보여주기만 한다. 앱 비밀번호가 아니라 전용 열쇠로 확인하는데,
+// 이 문으로 할 수 있는 일은 브리프를 넣는 것 하나뿐이다.
+app.post('/api/brief', async (c) => {
+  if (!c.env.BRIEF_TOKEN) return c.json({ error: 'BRIEF_TOKEN이 설정되지 않았습니다.' }, 503)
+  const given = (c.req.header('authorization') || '').replace(/^Bearer\s+/i, '')
+  if (!checkBriefToken(c.env, given)) return c.json({ error: '열쇠가 맞지 않습니다.' }, 401)
+
+  let body
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'JSON이 아닙니다.' }, 400)
+  }
+
+  const date = dateOr(body.date, todayKST())
+  const html = typeof body.html === 'string' ? body.html : ''
+  if (!html.trim()) return c.json({ error: 'html이 비었습니다.' }, 400)
+  // D1의 한 값 상한이 1MB다. 브리프 한 장은 보통 30~80KB.
+  if (html.length > 900_000) return c.json({ error: 'html이 너무 큽니다(900KB 넘음).' }, 413)
+
+  await db.saveBrief(c.env.DB, {
+    date, html,
+    events: body.events, todo: body.todo, done: body.done,
+    headline: typeof body.headline === 'string' ? body.headline.slice(0, 200) : null,
+    source: typeof body.source === 'string' ? body.source.slice(0, 60) : 'cloud',
+  })
+  return c.json({ ok: true, date, bytes: html.length })
+})
+
+app.get('/brief', async (c) => {
+  const date = dateOr(c.req.query('date'), todayKST())
+  const [brief, history] = await Promise.all([
+    db.getBrief(c.env.DB, date),
+    db.listBriefs(c.env.DB, 30),
+  ])
+  return html(c, briefPage({ date, brief, history, today: todayKST() }))
+})
+
+// 브리프 원본. 화면에는 iframe 안에 갇힌 채로 뜬다 — 받아 온 문서가 앱 화면을
+// 건드리지 못하게 하려는 것이다. 검색엔진·캐시에도 남기지 않는다.
+app.get('/brief/raw', async (c) => {
+  const brief = await db.getBrief(c.env.DB, dateOr(c.req.query('date'), todayKST()))
+  if (!brief) return c.notFound()
+  return new Response(brief.html, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Robots-Tag': 'noindex',
     },
   })
 })

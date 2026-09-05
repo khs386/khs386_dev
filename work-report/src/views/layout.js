@@ -181,6 +181,16 @@ nav.top .right{margin-left:auto}
 .bar .stem{width:52%; margin:0 auto; border-radius:8px 8px 0 0}
 .bar .n{font-size:13px; color:var(--text-2); margin-top:9px}
 
+/* 모닝브리프 칸 — 숫자 셋과 한 줄 요약 */
+.bhead{margin:0 0 12px; font-size:15px; color:var(--text-2); line-height:1.6}
+.brow{display:flex; gap:10px; flex-wrap:wrap}
+.bnum{flex:1 1 120px; padding:12px 14px; border-radius:10px; background:var(--fill);
+  display:flex; flex-direction:column; gap:2px}
+.bnum .bn{font-size:24px; font-weight:600; letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums; color:var(--text)}
+.bnum .bl{font-size:12px; color:var(--text-2)}
+iframe.brief{width:100%; height:78vh; min-height:520px; border:1px solid var(--sep-soft);
+  border-radius:10px; background:#fff; display:block}
 iframe.preview{width:100%; height:640px; border:1px solid var(--sep-soft);
   border-radius:var(--r); background:#fff}
 
