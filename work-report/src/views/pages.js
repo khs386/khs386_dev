@@ -297,7 +297,7 @@ function workTypeCard(workTypes) {
 const savedMark = (on) =>
   on ? '<span class="pill" style="background:var(--green)">저장했습니다</span>' : ''
 
-export function dailyPage({ date, logs, available, hasTasks, skip, saved }) {
+export function dailyPage({ date, logs, available, hasTasks, skip, saved, today }) {
   const body = `
 <div class="head">
   <div><h1>일일업무</h1><p>${koreanDate(date)} 에 진행한 업무와 세부내용을 적습니다.</p></div>
@@ -306,7 +306,7 @@ export function dailyPage({ date, logs, available, hasTasks, skip, saved }) {
     <a class="btn" href="/reports?kind=daily&date=${date}">보고서 만들기</a>
   </form>
 </div>
-${skip ? notice(`${skip}입니다. 자동 생성은 이 날짜를 건너뜁니다.`, 'warn') : ''}
+${skip ? notice(`${date === today ? '오늘' : '이 날'}은 <b>${skip}</b>입니다. 자동 생성은 건너뜁니다.`, 'warn') : ''}
 
 <div class="card">
   <div class="chead"><h2>업무 추가</h2><span class="count">${logs.length}건 기록됨</span></div>
