@@ -283,11 +283,13 @@ function fillPicker (id) {
   var box = document.querySelector('[data-add="' + id + '"]')
   if (!box) return
   var g = G[id], sel = box.querySelector('[data-pick]'), q = box.querySelector('[data-pq]')
-  var pool = tasksFor(g, null)
+  // 이미 넣은 업무도 목록에 그대로 두고 흐리게만 표시한다. 소리 없이 사라지면
+  // 지워진 것으로 오해하게 된다.
+  var used = usedIn(g, null)
   var keep = sel.value
   var text = q && !q.hidden ? q.value.trim().toLowerCase() : ''
-  var h = '<option value="">업무 목록에서 선택</option>', last = null, open = false
-  pool.forEach(function (t) {
+  var h = '<option value="">업무 목록에서 선택</option>', last = null, open = false, free = 0
+  D.tasks.forEach(function (t) {
     if (text && t.title.toLowerCase().indexOf(text) < 0 &&
         (t.series || '').toLowerCase().indexOf(text) < 0) return
     var s = t.series || ''
@@ -296,16 +298,22 @@ function fillPicker (id) {
       last = s; open = !!s
       if (open) h += '<optgroup label="' + esc(s) + '">'
     }
-    h += '<option value="' + esc(t.id) + '">' + esc(t.title) + '</option>'
+    if (!used[t.id]) free++
+    h += '<option value="' + esc(t.id) + '"' + (used[t.id] ? ' disabled' : '') + '>' +
+      esc(t.title) + (used[t.id] ? ' — 이미 넣음' : '') + '</option>'
   })
   if (open) h += '</optgroup>'
   sel.innerHTML = h
   sel.value = keep
   // 걸러 낸 첫 후보를 바로 고른다. 한 번 더 누르지 않아도 되게.
-  if (!sel.value && text && sel.options.length > 1) sel.selectedIndex = 1
-  if (q) q.hidden = pool.length <= 8
-  sel.disabled = !pool.length
-  box.querySelector('[data-addpick]').disabled = !pool.length
+  if (!sel.value && text) {
+    for (var i = 1; i < sel.options.length; i++) {
+      if (!sel.options[i].disabled) { sel.selectedIndex = i; break }
+    }
+  }
+  if (q) q.hidden = D.tasks.length <= 8
+  sel.disabled = !D.tasks.length
+  box.querySelector('[data-addpick]').disabled = !free
 }
 
 /** [저장] — 고치던 칸을 매듭짓고 그 표의 줄을 모두 다시 보낸다. */
@@ -342,6 +350,7 @@ document.addEventListener('click', function (ev) {
   if (b.hasAttribute('data-addpick')) {
     var s = box.querySelector('[data-pick]')
     if (!s.value) { toast('업무를 고르지 않았습니다.'); s.focus(); return }
+    if (usedIn(G[id], null)[s.value]) { toast('이미 넣은 업무입니다.'); return }
     var t = null
     D.tasks.forEach(function (x) { if (x.id === s.value) t = x })
     if (t) addRow(id, {title: t.title, task_id: t.id, work_type: t.work_type})
@@ -368,11 +377,15 @@ document.addEventListener('keydown', function (ev) {
 
 /* ── 고를 수 있는 값 ───────────────────────────────────── */
 
-/** 단위업무 목록. 일일 화면에서는 그 날 이미 넣은 업무를 빼고 보여 준다. */
-function tasksFor (g, row) {
-  if (!g.oncePerDay) return D.tasks
+/** 그 표에 이미 들어가 있는 단위업무. 일일 화면에서는 같은 날 두 번 넣지 않는다. */
+function usedIn (g, row) {
   var used = {}
+  if (!g.oncePerDay) return used
   g.rows.forEach(function (x) { if (x !== row && x.task_id) used[x.task_id] = 1 })
+  return used
+}
+function tasksFor (g, row) {
+  var used = usedIn(g, row)
   return D.tasks.filter(function (t) { return !used[t.id] })
 }
 /** 업무 유형은 시리즈를 따라간다. 딸린 업무가 없으면 시리즈 없는 유형만 고른다. */
