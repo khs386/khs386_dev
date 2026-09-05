@@ -466,9 +466,17 @@ app.get('/reports/download', async (c) => {
 
 /* ── 정해진 시각에 스스로 실행 ──────────────────────────── */
 
+/** cron 문자열의 다섯째 칸(요일)이 금요일 하나로 못 박혀 있으면 주간 보고서다. */
+function weeklyCron(cron) {
+  return String(cron || '').trim().split(/\s+/)[4] === '5'
+}
+
 /**
  * cron이 부를 때 도는 부분. 주말·공휴일이면 아무것도 만들지 않는다.
- * 어느 보고서를 만들지는 요일로 정한다 — 금요일 UTC 08시는 주간, 나머지는 일일.
+ *
+ * 일일과 주간이 같은 시각(16:00 KST)에 돌기 때문에 시각으로는 둘을 가릴 수 없다.
+ * 대신 부른 cron 문자열의 요일 칸을 본다. 금요일만 도는 "0 7 * * 5"가 주간이고,
+ * 날마다 도는 "0 7 * * *"가 일일이다. 금요일에는 둘 다 따로 한 번씩 불린다.
  */
 async function runScheduled(event, env) {
   const date = todayKST()
@@ -476,8 +484,7 @@ async function runScheduled(event, env) {
   const skip = skipReason(date, settings.holidays)
   if (skip) return { skipped: skip, date }
 
-  const hour = new Date(event.scheduledTime).getUTCHours()
-  const kind = hour === 8 ? 'weekly' : 'daily'
+  const kind = weeklyCron(event.cron) ? 'weekly' : 'daily'
 
   const { empty, filename } = await generateReport(env, env.DB, kind, date)
   if (empty) return { skipped: '기록된 업무 없음', date, kind }
