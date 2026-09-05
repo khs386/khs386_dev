@@ -468,10 +468,11 @@ ${
         <div class="chead"><h2>미리보기</h2><span class="count mono">${esc(report.filename)}</span></div>
         <iframe class="preview" title="보고서 미리보기" src="/reports/preview?kind=${kind}&date=${date}"></iframe>
         <p class="count" style="margin-top:10px">
-          <a href="/reports/preview?kind=${kind}&date=${date}" target="_blank" rel="noreferrer">새 탭에서 크게 보기</a>
-          ${report.drive_link
-            ? ` · 드라이브에 저장됨 <a href="${esc(report.drive_link)}" target="_blank" rel="noreferrer">파일 열기</a>`
-            : ''}
+          ${report.drive_link ? '드라이브에 저장됨 · ' : ''}<a
+            href="/reports/preview?kind=${kind}&date=${date}" target="_blank" rel="noreferrer">새 탭에서 크게 보기</a>${
+            report.drive_link
+              ? ` · <a href="${esc(report.drive_link)}" target="_blank" rel="noreferrer">파일 열기</a>`
+              : ''}
         </p>
       </div>`
     : '<p class="empty">아직 만들어진 보고서가 없습니다. 날짜를 고르고 "보고서 만들기"를 누르세요.</p>'

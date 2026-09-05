@@ -442,7 +442,7 @@ app.post('/reports/drive', async (c) => {
     if (!driveConfigured(c.env)) throw new Error('구글 드라이브 설정이 없습니다.')
     const report = await db.getReport(c.env.DB, kind, date)
     if (!report) throw new Error('먼저 보고서를 만들어 주세요.')
-    const up = await uploadHtml(c.env, report.filename, report.html)
+    const up = await uploadHtml(c.env, { filename: report.filename, html: report.html, kind, date })
     await db.setReportDrive(c.env.DB, kind, date, up.id, up.link)
     return back(c, to, `드라이브에 ${up.updated ? '덮어썼습니다' : '저장했습니다'}: ${report.filename}`)
   } catch (e) {
@@ -490,7 +490,7 @@ async function runScheduled(event, env) {
 
   if (driveConfigured(env)) {
     const report = await db.getReport(env.DB, kind, date)
-    const up = await uploadHtml(env, report.filename, report.html)
+    const up = await uploadHtml(env, { filename: report.filename, html: report.html, kind, date })
     await db.setReportDrive(env.DB, kind, date, up.id, up.link)
     return { ok: true, kind, date, filename, drive: up.link }
   }

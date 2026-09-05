@@ -43,26 +43,83 @@ async function accessToken(env) {
   return json.access_token
 }
 
-/** 폴더 안에 같은 이름의 파일이 있으면 그 id를 돌려준다 (덮어쓰기용). */
-async function findExisting(token, folderId, name) {
+const FOLDER_MIME = 'application/vnd.google-apps.folder'
+const ROOT_NAME = '업무보고서'
+const KIND_NAME = { daily: '일일', weekly: '주간' }
+
+const DRIVE_API = 'https://www.googleapis.com/drive/v3/files'
+const SHARED = 'supportsAllDrives=true&includeItemsFromAllDrives=true'
+
+/** 드라이브 검색어에 쓰는 작은따옴표를 막아 준다. */
+function quote(name) {
+  return name.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+}
+
+/** 폴더 안에서 이름이 같은 항목을 찾는다. 폴더만 찾으려면 folderOnly를 켠다. */
+async function findChild(token, parentId, name, folderOnly) {
   const q = encodeURIComponent(
-    `name = '${name.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed = false`
+    `name = '${quote(name)}' and '${parentId}' in parents and trashed = false` +
+      (folderOnly ? ` and mimeType = '${FOLDER_MIME}'` : '')
   )
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)` +
-      `&supportsAllDrives=true&includeItemsFromAllDrives=true`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  )
+  const res = await fetch(`${DRIVE_API}?q=${q}&fields=files(id)&${SHARED}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
   if (!res.ok) return null
   const json = await res.json()
   return json.files?.[0]?.id || null
 }
 
-/** HTML을 지정 폴더에 올린다. 같은 이름이 있으면 내용을 갱신한다. */
-export async function uploadHtml(env, filename, html) {
-  const folderId = env.GOOGLE_DRIVE_FOLDER_ID
+/** 하위 폴더를 찾고, 없으면 만든다. */
+async function ensureFolder(token, parentId, name) {
+  const found = await findChild(token, parentId, name, true)
+  if (found) return found
+  const res = await fetch(`${DRIVE_API}?${SHARED}&fields=id`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: FOLDER_MIME, parents: [parentId] }),
+  })
+  const json = await res.json()
+  if (!res.ok) throw new Error(`드라이브 폴더 만들기 실패(${name}): ${json.error?.message || res.status}`)
+  return json.id
+}
+
+/** 폴더 이름을 읽어 온다. 못 읽으면 빈 문자열. */
+async function folderName(token, id) {
+  const res = await fetch(`${DRIVE_API}/${id}?fields=name&${SHARED}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (!res.ok) return ''
+  const json = await res.json()
+  return json.name || ''
+}
+
+/**
+ * 보고서가 들어갈 폴더를 정한다.
+ *
+ *   업무보고서 / 일일 / 2026 / report_2026-09-04.html
+ *   업무보고서 / 주간 / 2026 / weekly_report_2026-09-05.html
+ *
+ * 설정해 둔 폴더(GOOGLE_DRIVE_FOLDER_ID)를 [업무보고서] 자리로 본다. 다만 그 폴더의
+ * 이름을 읽을 수 있고 이름이 [업무보고서]가 아니면 그 안에 [업무보고서]를 하나 만든다.
+ * (권한이 drive.file이라 앱이 만들지 않은 폴더는 이름을 못 읽는다. 그럴 때는
+ *  설정해 둔 폴더를 그대로 쓴다 — 폴더가 두 겹 생기는 일을 막기 위해서다.)
+ * 하위 폴더는 없으면 그때그때 만든다.
+ */
+async function targetFolder(token, env, kind, date) {
+  const configured = env.GOOGLE_DRIVE_FOLDER_ID
+  const root =
+    (await folderName(token, configured)) === ROOT_NAME
+      ? configured
+      : await ensureFolder(token, configured, ROOT_NAME)
+  const byKind = await ensureFolder(token, root, KIND_NAME[kind] || KIND_NAME.daily)
+  return await ensureFolder(token, byKind, String(date).slice(0, 4))
+}
+
+/** HTML을 종류·연도별 폴더에 올린다. 같은 이름이 있으면 내용을 갱신한다. */
+export async function uploadHtml(env, { filename, html, kind, date }) {
   const token = await accessToken(env)
-  const existing = await findExisting(token, folderId, filename)
+  const folderId = await targetFolder(token, env, kind, date)
+  const existing = await findChild(token, folderId, filename, false)
 
   const meta = existing ? { name: filename } : { name: filename, parents: [folderId] }
 
