@@ -336,6 +336,11 @@ ${
   <div class="chead"><h2>${esc(l.title)}</h2><div class="row">
     ${savedMark(saved === l.id)}
     ${d === null ? '' : ddayTag(d)}
+    <label class="chk flat" title="요약 카드 집계에서 뺍니다">
+      <input type="checkbox" name="is_misc" value="1" form="save-${l.id}"${l.is_misc ? ' checked' : ''}
+             style="width:auto">
+      <span>기타 사항</span></label>
+    <button class="btn sm" form="save-${l.id}">저장</button>
     <form method="post" action="/daily/${l.id}/move" class="inline">
       <input type="hidden" name="date" value="${date}"><input type="hidden" name="dir" value="-1">
       <button class="btn ghost sm"${i === 0 ? ' disabled' : ''}>↑</button></form>
@@ -346,7 +351,7 @@ ${
       <input type="hidden" name="date" value="${date}">
       <button class="btn danger sm">빼기</button></form>
   </div></div>
-  <form method="post" action="/daily/${l.id}/save">
+  <form id="save-${l.id}" method="post" action="/daily/${l.id}/save">
     <input type="hidden" name="date" value="${date}">
     <div class="grid">
       ${field('진행 상태', 'status', l.status, { options: STATUSES })}
@@ -357,12 +362,6 @@ ${
     <div class="fld" style="margin-bottom:12px">
       <label>세부내용 · 한 줄에 하나씩 적으면 글머리로 들어갑니다</label>
       <textarea name="detail_text" rows="3">${esc((l.detail_lines || []).join('\n'))}</textarea>
-    </div>
-    <div class="row">
-      <button class="btn">저장</button>
-      <label class="row" style="font-size:13px">
-        <input type="checkbox" name="is_misc" value="1"${l.is_misc ? ' checked' : ''} style="width:auto">
-        <span>기타 사항 (요약 카드 집계 제외)</span></label>
     </div>
   </form>
 </div>`

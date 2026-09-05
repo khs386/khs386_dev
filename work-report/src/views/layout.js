@@ -113,6 +113,8 @@ nav.top .right{margin-left:auto}
 .chk{display:flex; align-items:center; gap:8px; font-size:13px;
   white-space:nowrap; padding-bottom:9px}
 .chk input{width:auto; flex:none}
+/* 제목 줄에 얹는 체크는 밑을 맞출 라벨이 없다. */
+.chk.flat{padding-bottom:0; margin-right:2px}
 .row>*{flex:0 0 auto}
 .grow{flex:1 1 200px}
 /* 업무 유형 이름 칸. 화면 폭을 다 쓰면 버튼이 멀어져 읽기 나쁘다. */
