@@ -22,7 +22,7 @@ export function todayPage({ today, logs, weekly, series, soon, skip, brief }) {
   const stale = series.filter((s) => !s.updated_at)
   const body = `
 <div class="head">
-  <div><h1>오늘현황</h1><p>${koreanDate(today)} · ${koreanWeek(today)}</p></div>
+  <div><h1>데일리 브리프</h1><p>${koreanDate(today)} · ${koreanWeek(today)}</p></div>
   <div class="row">
     <a class="btn" href="/daily">일일업무 기록하기</a>
     <a class="btn ghost" href="/weekly">주간업무</a>
@@ -72,7 +72,7 @@ ${briefCard(brief, today)}
       : '<p class="empty">마감이 정해진 업무가 없습니다.</p>'
   }
 </div>`
-  return page({ title: '오늘현황', path: '/', body })
+  return page({ title: '데일리 브리프', path: '/', body })
 }
 
 /* ── 업무 ───────────────────────────────────────────────── */
@@ -88,7 +88,7 @@ export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, ar
   <form method="post" action="${editing ? `/tasks/${editing.id}/save` : '/tasks/new'}">
     <div class="fld" style="margin-bottom:10px"><label>업무명</label>
       <input name="title" value="${esc(f.title)}" placeholder="예: 꼬마생각 샘플권 감수본 확인" required></div>
-    <div class="grid">
+    <div class="grid one-line">
       ${optionalSelect('시리즈', 'series', f.series, seriesNames)}
       ${optionalSelect('업무 유형', 'work_type', f.work_type, workTypes)}
       ${field('진행 상태', 'status', f.status, { options: STATUSES })}
@@ -158,7 +158,7 @@ const briefCount = (n, label) =>
   `<div class="bnum"><span class="bn">${n === null || n === undefined ? '–' : n}</span>` +
   `<span class="bl">${label}</span></div>`
 
-/** 오늘현황 맨 위 칸. 아침에 온 브리프의 숫자만 보여주고 본문은 /brief 에서 연다. */
+/** 데일리 브리프 맨 위 칸. 아침에 온 브리프의 숫자만 보여주고 본문은 /brief 에서 연다. */
 function briefCard(brief, today) {
   if (!brief) {
     return `

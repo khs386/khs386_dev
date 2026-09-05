@@ -7,7 +7,7 @@ export function esc(s) {
 }
 
 const NAV = [
-  ['/', '오늘현황'],
+  ['/', '데일리 브리프'],
   ['/tasks', '단위업무'],
   ['/daily', '일일업무'],
   ['/weekly', '주간업무'],
@@ -113,6 +113,14 @@ nav.top .right{margin-left:auto}
 
 .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
   gap:12px; margin-bottom:14px}
+/* 업무 추가/수정 폼 — 고르는 칸 여섯 개를 한 줄에 놓는다. 글이 긴 시리즈·업무
+   유형에 자리를 더 주고, 상태·우선순위·진행률은 좁혀 잡는다. 화면이 좁아지면
+   보통 격자로 돌아가 접힌다. */
+.grid.one-line{grid-template-columns:1.6fr 2fr .92fr .92fr .72fr 1.6fr}
+@media (max-width:840px){
+  .grid.one-line{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+}
+
 .fld{display:flex; flex-direction:column; gap:5px}
 .fld label{font-size:12px; color:var(--text-3); letter-spacing:0;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
