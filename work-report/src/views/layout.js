@@ -7,11 +7,11 @@ export function esc(s) {
 }
 
 const NAV = [
-  ['/', '오늘'],
-  ['/tasks', '업무'],
-  ['/daily', '일일 기록'],
-  ['/weekly', '주간 현황'],
-  ['/series', '시리즈'],
+  ['/', '오늘현황'],
+  ['/tasks', '단위업무'],
+  ['/daily', '일일업무'],
+  ['/weekly', '주간업무'],
+  ['/series', '개발현황'],
   ['/reports', '보고서'],
 ]
 
@@ -191,10 +191,10 @@ export function page({ title, path, body, narrow }) {
 <html lang="ko"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 ${HEAD_ICON}
-<title>${esc(title)} · 업무보고서</title><style>${CSS}</style></head>
+<title>${esc(title)} · 업무관리</title><style>${CSS}</style></head>
 <body>
 <nav class="top"><div class="inner">
-<span class="brand">업무보고서</span>
+<span class="brand">업무관리</span>
 ${NAV.map(([h, l]) =>
   `<a href="${h}"${h === path ? ' class="on"' : ''}>${l}</a>`).join('')}
 <form method="post" action="/logout" class="right">
@@ -210,9 +210,9 @@ export function loginPage(message) {
 <html lang="ko"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 ${HEAD_ICON}
-<title>로그인 · 업무보고서</title><style>${CSS}</style></head>
+<title>로그인 · 업무관리</title><style>${CSS}</style></head>
 <body><main class="auth"><div class="auth-box">
-<h1>업무보고서</h1>
+<h1>업무관리</h1>
 <p class="lead">일일·주간 보고서를 만들고 드라이브에 저장합니다</p>
 ${message ? `<p class="note err">${esc(message)}</p>` : ''}
 <form method="post" action="/login">

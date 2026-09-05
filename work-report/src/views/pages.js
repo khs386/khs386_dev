@@ -22,10 +22,10 @@ export function todayPage({ today, logs, weekly, series, soon, skip, msg }) {
   const stale = series.filter((s) => !s.updated_at)
   const body = `
 <div class="head">
-  <div><h1>오늘</h1><p>${koreanDate(today)} · ${koreanWeek(today)}</p></div>
+  <div><h1>오늘현황</h1><p>${koreanDate(today)} · ${koreanWeek(today)}</p></div>
   <div class="row">
-    <a class="btn" href="/daily">일일 기록하기</a>
-    <a class="btn ghost" href="/weekly">주간 현황</a>
+    <a class="btn" href="/daily">일일업무 기록하기</a>
+    <a class="btn ghost" href="/weekly">주간업무</a>
   </div>
 </div>
 ${notice(msg, '')}
@@ -42,7 +42,7 @@ ${stale.length ? notice('시리즈 진행률이 아직 입력되지 않았습니
           ${tag(l.progress === null ? '진행률 없음' : l.progress + '%')}
           ${ddayTag(dday(l.deadline, today))}
         </div>`).join('')
-      : `<p class="empty">아직 기록이 없습니다. <a href="/daily">일일 기록</a>에서 오늘 진행한 업무를 넣으세요.</p>`
+      : `<p class="empty">아직 기록이 없습니다. <a href="/daily">일일업무</a>에서 오늘 진행한 업무를 넣으세요.</p>`
   }
   ${logs.length ? `<div class="row" style="margin-top:14px">
       <a class="btn" href="/reports?kind=daily&date=${today}">일일 보고서 만들기</a></div>` : ''}
@@ -54,7 +54,7 @@ ${stale.length ? notice('시리즈 진행률이 아직 입력되지 않았습니
   ${
     weekly.prev + weekly.plan
       ? `<div class="row"><a class="btn alt" href="/reports?kind=weekly&date=${today}">주간 보고서 만들기</a></div>`
-      : `<p class="empty">이번 주 항목이 없습니다. <a href="/weekly">주간 현황</a>에서 채우세요.</p>`
+      : `<p class="empty">이번 주 항목이 없습니다. <a href="/weekly">주간업무</a>에서 채우세요.</p>`
   }
 </div>
 
@@ -71,7 +71,7 @@ ${stale.length ? notice('시리즈 진행률이 아직 입력되지 않았습니
       : '<p class="empty">마감이 정해진 업무가 없습니다.</p>'
   }
 </div>`
-  return page({ title: '오늘', path: '/', body })
+  return page({ title: '오늘현황', path: '/', body })
 }
 
 /* ── 업무 ───────────────────────────────────────────────── */
@@ -107,7 +107,7 @@ export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, ar
 
   const body = `
 <div class="head">
-  <div><h1>단위 업무</h1><p>보고서에 들어가는 업무 목록입니다. 여기서 상태와 진행률을 관리합니다.</p></div>
+  <div><h1>단위업무</h1><p>보고서에 들어가는 업무 목록입니다. 여기서 상태와 진행률을 관리합니다.</p></div>
   <a class="btn ghost sm" href="/tasks${archived ? '' : '?archived=1'}">
     ${archived ? '진행 중 목록 보기' : `보관함 보기${archivedCount ? ` (${archivedCount})` : ''}`}</a>
 </div>
@@ -132,14 +132,14 @@ ${archived ? '' : form}
             <input type="hidden" name="archived" value="${t.archived ? '0' : '1'}">
             <button class="btn ghost sm">${t.archived ? '복구' : '보관'}</button></form>
           <form method="post" action="/tasks/${t.id}/delete" class="inline"
-                onsubmit="return confirm('이 업무와 일일 기록을 함께 지웁니다. 계속할까요?')">
+                onsubmit="return confirm('이 업무와 일일업무 기록을 함께 지웁니다. 계속할까요?')">
             <button class="btn danger sm">삭제</button></form>
         </div>`).join('')
       : '<p class="empty">업무가 없습니다.</p>'
   }
 </div>
 ${archived ? '' : workTypeCard(workTypes)}`
-  return page({ title: '업무', path: '/tasks', body })
+  return page({ title: '단위업무', path: '/tasks', body })
 }
 
 /** 업무 유형 관리. 이름을 바꾸면 그 유형을 쓰던 업무도 함께 따라간다. */
@@ -174,7 +174,7 @@ function workTypeCard(workTypes) {
 </div>`
 }
 
-/* ── 일일 기록 ──────────────────────────────────────────── */
+/* ── 일일업무 ──────────────────────────────────────────── */
 
 const savedMark = (on) =>
   on ? '<span class="pill" style="background:var(--green)">저장했습니다</span>' : ''
@@ -182,7 +182,7 @@ const savedMark = (on) =>
 export function dailyPage({ date, logs, available, hasTasks, skip, msg, saved }) {
   const body = `
 <div class="head">
-  <div><h1>일일 기록</h1><p>${koreanDate(date)} 에 진행한 업무와 세부내용을 적습니다.</p></div>
+  <div><h1>일일업무</h1><p>${koreanDate(date)} 에 진행한 업무와 세부내용을 적습니다.</p></div>
   <form method="get" action="/daily" class="row">
     <input type="date" name="date" value="${date}" style="width:170px" onchange="this.form.submit()">
     <a class="btn" href="/reports?kind=daily&date=${date}">보고서 만들기</a>
@@ -250,10 +250,10 @@ ${
       }).join('')
     : '<p class="empty">이 날짜에 기록된 업무가 없습니다.</p>'
 }`
-  return page({ title: '일일 기록', path: '/daily', body })
+  return page({ title: '일일업무', path: '/daily', body })
 }
 
-/* ── 주간 현황 ──────────────────────────────────────────── */
+/* ── 주간업무 ──────────────────────────────────────────── */
 
 export function weeklyPage({ date, weekStart, items, tasks, workTypes, msg, saved }) {
   const byKind = (k) => items.filter((i) => i.kind === k)
@@ -322,7 +322,7 @@ ${byKind(kind).map((i) => itemCard(i, kind)).join('') ||
 
   const body = `
 <div class="head">
-  <div><h1>주간 현황</h1><p>${koreanWeek(date)} · 주 시작 ${weekStart}</p></div>
+  <div><h1>주간업무</h1><p>${koreanWeek(date)} · 주 시작 ${weekStart}</p></div>
   <form method="get" action="/weekly" class="row">
     <input type="date" name="date" value="${date}" style="width:170px" onchange="this.form.submit()">
     <a class="btn alt" href="/reports?kind=weekly&date=${date}">보고서 만들기</a>
@@ -331,10 +331,10 @@ ${byKind(kind).map((i) => itemCard(i, kind)).join('') ||
 ${notice(msg)}
 ${section('전주 실적', carry)}
 ${section('금주 예정')}`
-  return page({ title: '주간 현황', path: '/weekly', body })
+  return page({ title: '주간업무', path: '/weekly', body })
 }
 
-/* ── 시리즈 ─────────────────────────────────────────────── */
+/* ── 개발현황 ─────────────────────────────────────────────── */
 
 export function seriesPage({ series, palette, msg }) {
   const colorSelect = (name, value) =>
@@ -356,7 +356,7 @@ export function seriesPage({ series, palette, msg }) {
       </div>`).join('')
 
   const body = `
-<div class="head"><div><h1>시리즈별 개발 현황</h1>
+<div class="head"><div><h1>개발현황</h1>
   <p>단계별 진행률을 넣으면 총 진행률이 가중치대로 계산됩니다.</p></div></div>
 ${notice(msg)}
 
@@ -428,7 +428,7 @@ document.querySelectorAll('[data-series]').forEach(function (card) {
   inputs.forEach(function (el) { el.addEventListener('input', paint) })
 })
 </script>`
-  return page({ title: '시리즈', path: '/series', body })
+  return page({ title: '개발현황', path: '/series', body })
 }
 
 /* ── 보고서 ─────────────────────────────────────────────── */

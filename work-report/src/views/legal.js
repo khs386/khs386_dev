@@ -19,9 +19,9 @@ const shell = (title, body) => `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<title>${title} · 업무보고서</title><style>${STYLE}</style></head>
+<title>${title} · 업무관리</title><style>${STYLE}</style></head>
 <body><main>${body}
-<footer><a href="/">업무보고서</a> · <a href="/privacy">개인정보처리방침</a> · <a href="/terms">이용약관</a></footer>
+<footer><a href="/">업무관리</a> · <a href="/privacy">개인정보처리방침</a> · <a href="/terms">이용약관</a></footer>
 </main></body></html>`
 
 const contact = (env) =>
@@ -32,7 +32,7 @@ const contact = (env) =>
 export function privacyPage(env) {
   return shell('개인정보처리방침', `
 <h1>개인정보처리방침</h1>
-<p class="sub">업무보고서 (work-report)</p>
+<p class="sub">업무관리 (work-report)</p>
 
 <div class="box">
 <p><b>이 앱은 한 사람이 자신의 업무보고서를 만들기 위해 쓰는 개인 도구입니다.</b>
@@ -69,7 +69,7 @@ ${contact(env)}
 export function termsPage(env) {
   return shell('이용약관', `
 <h1>이용약관</h1>
-<p class="sub">업무보고서 (work-report)</p>
+<p class="sub">업무관리 (work-report)</p>
 
 <div class="box">
 <p>이 앱은 앱 소유자 본인이 쓰기 위해 만든 개인 도구입니다. 일반에 제공하는 서비스가 아닙니다.</p>
