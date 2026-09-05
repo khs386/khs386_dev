@@ -20,6 +20,13 @@ const notice = (msg, kind) =>
 
 export function todayPage({ today, logs, weekly, series, soon, brief }) {
   const stale = series.filter((s) => !s.updated_at)
+  // 주간 항목이 아예 없을 때와, 지난주 것만 있고 이번 주가 빈 때는 말이 다르다.
+  const weekNote =
+    weekly.prev + weekly.plan === 0
+      ? '<p class="empty">이번 주 항목이 없습니다. <a href="/weekly">주간업무</a>에서 채우세요.</p>'
+      : weekly.plan
+        ? ''
+        : '<p class="count">금주 예정 업무가 없습니다. <a href="/weekly">주간업무</a>에서 채우세요.</p>'
   const body = `
 <div class="head">
   <div><h1>데일리 브리프</h1><p>${koreanDate(today)} · ${koreanWeek(today)}</p></div>
@@ -50,15 +57,10 @@ ${briefCard(brief, today)}
 </div>
 
 <div class="card">
-  <div class="chead"><h2>이번 주 현황</h2>
+  <!-- 채울 말이 없으면 제목 줄 아래 여백까지 지운다. 빈 자리만 남기지 않는다. -->
+  <div class="chead"${weekNote ? '' : ' style="margin-bottom:0"'}><h2>이번 주 현황</h2>
     <span class="count">전주 실적 ${weekly.prev}건 · 금주 예정 ${weekly.plan}건</span></div>
-  ${
-    weekly.prev + weekly.plan
-      ? `<div class="row"><a class="btn alt" href="/reports?kind=weekly&date=${today}">주간 보고서 만들기</a></div>
-         ${weekly.plan ? '' : `<p class="count" style="margin-top:10px">금주 예정 업무가 없습니다.
-           <a href="/weekly">주간업무</a>에서 채우세요.</p>`}`
-      : `<p class="empty">이번 주 항목이 없습니다. <a href="/weekly">주간업무</a>에서 채우세요.</p>`
-  }
+  ${weekNote}
 </div>
 
 <div class="card">
