@@ -523,6 +523,65 @@ app.get('/brief', async (c) => {
 })
 
 /**
+ * 브리프 서식 바로잡기. 문서를 만드는 쪽이 옛 서식으로 되돌아가도 화면은 맞게 나온다.
+ *
+ * 세 가지를 한다.
+ *   1. 버튼 글자의 "초안 잡기"를 "초안잡기"로 붙인다.
+ *   2. btn-reply / btn-remind 클래스가 없으면 글자를 보고 붙인다. 그래야 앱이
+ *      정한 색과 밑줄 없는 모양이 걸린다. 문서가 직접 넣은 style은 걷어 낸다.
+ *   3. 버튼 뭉치를 문장 아래에서 항목 오른쪽으로 옮긴다. 항목은 버튼 글자를 뺀
+ *      본문이 열 자 넘게 담긴 가장 작은 조상으로 찾고, 그 안에 절대 위치로 세워
+ *      원래 짜임새는 건드리지 않는다. 좁은 화면에서는 아래에 그대로 둔다.
+ */
+const BRIEF_FIXUP = `<script>(function(){
+var S='a[href^="https://claude.ai/new"]';
+function W(n){return n.textContent.replace(/\\s+/g,'').length}
+function body(n){var b=0;[].forEach.call(n.querySelectorAll(S),function(x){b+=W(x)});
+  return W(n)-b}
+function owner(a){var n=a.parentElement,g=0,t=0;
+  while(n&&n!==document.body&&g++<8){
+    t=body(n); if(t>=10)break; n=n.parentElement}
+  if(!n||n===document.body||t<10)return null;
+  if(t>400||n.querySelectorAll(S).length>2)return null;
+  var k=n.querySelectorAll(S).length;
+  while(n.parentElement&&n.parentElement!==document.body){
+    var up=n.parentElement;
+    if(body(up)>t+3||up.querySelectorAll(S).length!==k)break;
+    if(up.clientHeight>n.clientHeight+60)break;
+    n=up}
+  return n}
+function run(){
+  var A=[].slice.call(document.querySelectorAll(S)); if(!A.length)return;
+  var keys=[],grp=[];
+  A.forEach(function(a){
+    if(!a.hasAttribute('data-fx')){
+      a.setAttribute('data-fx','1');
+      var t=(a.textContent||'').replace(/초안\\s+잡기/g,'초안잡기').trim();
+      a.textContent=t;
+      if(!/btn-(reply|remind)/.test(a.className||'')){
+        a.removeAttribute('style');
+        a.className=/회신/.test(t)?'btn-reply':'btn-remind'}}
+    var it=owner(a); if(!it||it.hasAttribute('data-fxcol'))return;
+    var i=keys.indexOf(it); if(i<0){keys.push(it);grp.push([a])}else grp[i].push(a)});
+  keys.forEach(function(it,i){
+    if(it.clientWidth<420)return;
+    var col=document.createElement('div');
+    col.style.cssText='position:absolute;right:0;top:50%;transform:translateY(-50%);'
+      +'display:flex;flex-direction:column;gap:7px;align-items:stretch';
+    grp[i].slice().sort(function(x,y){
+      return (/회신/.test(x.textContent)?1:0)-(/회신/.test(y.textContent)?1:0)})
+      .forEach(function(a){
+        var h=a.parentElement; col.appendChild(a);
+        while(h&&h!==it&&!h.textContent.trim()&&!h.querySelector('img,svg')){
+          var up=h.parentElement; up.removeChild(h); h=up}});
+    it.setAttribute('data-fxcol','1');
+    if(getComputedStyle(it).position==='static')it.style.position='relative';
+    it.appendChild(col);
+    it.style.paddingRight=(col.offsetWidth+18)+'px'})}
+addEventListener('load',run);setTimeout(run,200);setTimeout(run,900);
+})()<\/script>`
+
+/**
  * 브리프 안의 링크가 액자 안에서 열리지 않도록 <base target="_blank">를 끼운다.
  *
  * 브리프에는 Gmail 스레드나 claude.ai로 가는 링크가 들어 있다. 그대로 두면 액자
@@ -559,11 +618,16 @@ function prepareBriefHtml(html) {
     'h3,h4{font-size:15px !important;font-weight:600 !important;letter-spacing:-.018em !important}' +
     'b,strong{font-weight:600 !important}' +
     '</style>' +
+    BRIEF_FIXUP +
     // 액자 안에서도 스크롤이 생기면 세로 막대가 둘이 된다. 문서가 자기 높이를
     // 알려 주면 바깥에서 액자를 그만큼 늘려, 페이지 스크롤 하나만 남는다.
-    '<script>(function(){function s(){try{parent.postMessage({briefHeight:' +
-    'Math.max(document.documentElement.scrollHeight,(document.body||{}).scrollHeight||0)' +
-    '},"*")}catch(e){}}addEventListener("load",s);addEventListener("resize",s);' +
+    // 높이는 본문 상자의 아래끝으로 잰다. scrollHeight는 액자가 늘어난 만큼
+    // 따라 늘어나서, 한 번 커지면 다시 줄지 않는다.
+    '<script>(function(){function h(){var b=document.body;if(!b)return 0;' +
+    'var r=b.getBoundingClientRect(),m=parseFloat(getComputedStyle(b).marginBottom)||0;' +
+    'var v=Math.ceil(r.bottom+m);return v>80?v:document.documentElement.scrollHeight}' +
+    'function s(){try{parent.postMessage({briefHeight:h()},"*")}catch(e){}}' +
+    'addEventListener("load",s);addEventListener("resize",s);' +
     'if(window.ResizeObserver)new ResizeObserver(s).observe(document.documentElement);' +
     'setTimeout(s,300);setTimeout(s,1200)})()<\/script>'
   const head = /<head[^>]*>/i.exec(html)
