@@ -87,7 +87,6 @@ app.get('/', async (c) => {
       plan: weekly.filter((w) => w.kind === '금주 예정').length,
     },
     skip: skipReason(today, settings.holidays),
-    msg: c.req.query('msg'),
   }))
 })
 
@@ -122,7 +121,6 @@ app.get('/tasks', async (c) => {
     workTypes: workTypes.map((t) => t.name),
     archivedCount: archivedList.length,
     editing: editId ? await db.getTask(c.env.DB, editId) : null,
-    msg: c.req.query('msg'),
   }))
 })
 
@@ -173,7 +171,6 @@ app.get('/daily', async (c) => {
     available: tasks.filter((t) => !used.has(t.id)),
     hasTasks: tasks.length > 0,
     skip: skipReason(date, settings.holidays),
-    msg: c.req.query('msg'),
     saved: c.req.query('saved'),
   }))
 })
@@ -238,7 +235,7 @@ app.get('/weekly', async (c) => {
   return html(c, weeklyPage({
     date, weekStart: ws, items, tasks,
     workTypes: workTypes.map((t) => t.name),
-    msg: c.req.query('msg'), saved: c.req.query('saved'),
+    saved: c.req.query('saved'),
   }))
 })
 
@@ -364,7 +361,6 @@ app.get('/series', async (c) =>
   html(c, seriesPage({
     series: await db.listSeries(c.env.DB),
     palette: db.SERIES_PALETTE,
-    msg: c.req.query('msg'),
   })))
 
 app.post('/series', async (c) => {
@@ -417,8 +413,6 @@ app.get('/reports', async (c) => {
   return html(c, reportsPage({
     kind, date, report, history,
     driveReady: driveConfigured(c.env),
-    msg: c.req.query('msg'),
-    msgKind: c.req.query('t'),
   }))
 })
 

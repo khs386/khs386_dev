@@ -144,6 +144,28 @@ nav.top .right{margin-left:auto}
 .dday{font-size:13px; font-weight:600; letter-spacing:0}
 
 /* 알림 */
+/* 저장·삭제 같은 처리가 끝나면 위쪽 가운데에 잠깐 떠오르는 알림 상자 */
+.toast{
+  position:fixed; left:50%; top:67px; transform:translate(-50%,-14px);
+  display:flex; align-items:center; gap:10px; z-index:60;
+  max-width:min(540px,calc(100vw - 32px)); padding:12px 18px;
+  border-radius:14px; font-size:14px; font-weight:500; line-height:1.45;
+  color:var(--text); background:color-mix(in srgb,var(--raised) 84%,transparent);
+  -webkit-backdrop-filter:saturate(180%) blur(20px); backdrop-filter:saturate(180%) blur(20px);
+  box-shadow:0 12px 36px rgba(0,0,0,.18), 0 0 0 .5px color-mix(in srgb,var(--sep) 70%,transparent);
+  opacity:0; transition:opacity .22s ease, transform .22s ease; cursor:default;
+}
+.toast.show{opacity:1; transform:translate(-50%,0)}
+.toast[hidden]{display:none}
+.toast .ic{
+  flex:none; width:20px; height:20px; border-radius:50%; background:var(--green);
+  color:#fff; font-size:12px; font-weight:700; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+}
+.toast.warn .ic{background:var(--orange)}
+.toast.err .ic{background:var(--red)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+
 .note{padding:11px 15px; border-radius:10px; margin-bottom:16px; font-size:14px;
   background:var(--fill); color:var(--text-2)}
 .note.warn{background:color-mix(in srgb,var(--orange) 14%,var(--bg)); color:var(--text)}
@@ -186,6 +208,42 @@ form.inline{display:inline}
 }
 `
 
+// 처리가 끝나면 주소에 ?msg=... 가 붙어 돌아온다. 그 말을 알림 상자로 띄우고
+// 주소에서는 지운다. 새로고침해도 같은 알림이 다시 뜨지 않게 하기 위해서다.
+// 글자는 textContent로만 넣는다. 주소에 실려 온 값이라 HTML로 해석하면 안 된다.
+const TOAST = `<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search)
+  var msg = q.get('msg')
+  if (!msg) return
+  var kind = q.get('t') === 'err' ? 'err' : q.get('t') === 'warn' ? 'warn' : 'ok'
+  var box = document.getElementById('toast')
+  var ic = document.createElement('span')
+  ic.className = 'ic'
+  ic.textContent = kind === 'ok' ? '✓' : '!'
+  var tx = document.createElement('span')
+  tx.textContent = msg
+  box.className = 'toast ' + kind
+  box.append(ic, tx)
+  box.hidden = false
+  requestAnimationFrame(function () { box.classList.add('show') })
+
+  var timer
+  function hide() {
+    clearTimeout(timer)
+    box.classList.remove('show')
+    setTimeout(function () { box.hidden = true }, 250)
+  }
+  timer = setTimeout(hide, kind === 'err' ? 6000 : 3000)
+  box.addEventListener('click', hide)
+
+  q.delete('msg'); q.delete('t')
+  var rest = q.toString()
+  history.replaceState(null, '', location.pathname + (rest ? '?' + rest : '') + location.hash)
+})()
+<\/script>`
+
 export function page({ title, path, body, narrow }) {
   return `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8">
@@ -202,6 +260,7 @@ ${NAV.map(([h, l]) =>
 </form>
 </div></nav>
 <main class="container${narrow ? ' narrow' : ''}">${body}</main>
+${TOAST}
 </body></html>`
 }
 

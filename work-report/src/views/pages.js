@@ -18,7 +18,7 @@ const notice = (msg, kind) =>
 
 /* ── 오늘 ───────────────────────────────────────────────── */
 
-export function todayPage({ today, logs, weekly, series, soon, skip, msg }) {
+export function todayPage({ today, logs, weekly, series, soon, skip }) {
   const stale = series.filter((s) => !s.updated_at)
   const body = `
 <div class="head">
@@ -28,7 +28,6 @@ export function todayPage({ today, logs, weekly, series, soon, skip, msg }) {
     <a class="btn ghost" href="/weekly">주간업무</a>
   </div>
 </div>
-${notice(msg, '')}
 ${skip ? notice(`오늘은 <b>${skip}</b>입니다. 자동 생성은 건너뜁니다.`, 'warn') : ''}
 ${stale.length ? notice('시리즈 진행률이 아직 입력되지 않았습니다. <a href="/series">지금 입력하기</a>', 'warn') : ''}
 
@@ -76,7 +75,7 @@ ${stale.length ? notice('시리즈 진행률이 아직 입력되지 않았습니
 
 /* ── 업무 ───────────────────────────────────────────────── */
 
-export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, archivedCount, msg }) {
+export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, archivedCount }) {
   const f = editing || {
     title: '', series: seriesNames[0] || '', work_type: workTypes[0] || '',
     priority: '중간', status: '진행', progress: '', deadline: '', is_misc: false,
@@ -111,7 +110,6 @@ export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, ar
   <a class="btn ghost sm" href="/tasks${archived ? '' : '?archived=1'}">
     ${archived ? '진행 중 목록 보기' : `보관함 보기${archivedCount ? ` (${archivedCount})` : ''}`}</a>
 </div>
-${notice(msg)}
 ${archived ? '' : form}
 <div class="card">
   <div class="chead"><h2>${archived ? '보관함' : '업무 목록'}</h2>
@@ -179,7 +177,7 @@ function workTypeCard(workTypes) {
 const savedMark = (on) =>
   on ? '<span class="pill" style="background:var(--green)">저장했습니다</span>' : ''
 
-export function dailyPage({ date, logs, available, hasTasks, skip, msg, saved }) {
+export function dailyPage({ date, logs, available, hasTasks, skip, saved }) {
   const body = `
 <div class="head">
   <div><h1>일일업무</h1><p>${koreanDate(date)} 에 진행한 업무와 세부내용을 적습니다.</p></div>
@@ -188,7 +186,6 @@ export function dailyPage({ date, logs, available, hasTasks, skip, msg, saved })
     <a class="btn" href="/reports?kind=daily&date=${date}">보고서 만들기</a>
   </form>
 </div>
-${notice(msg)}
 ${skip ? notice(`${skip}입니다. 자동 생성은 이 날짜를 건너뜁니다.`, 'warn') : ''}
 
 <div class="card">
@@ -255,7 +252,7 @@ ${
 
 /* ── 주간업무 ──────────────────────────────────────────── */
 
-export function weeklyPage({ date, weekStart, items, tasks, workTypes, msg, saved }) {
+export function weeklyPage({ date, weekStart, items, tasks, workTypes, saved }) {
   const byKind = (k) => items.filter((i) => i.kind === k)
 
   const addForm = (kind) => `
@@ -328,7 +325,6 @@ ${byKind(kind).map((i) => itemCard(i, kind)).join('') ||
     <a class="btn alt" href="/reports?kind=weekly&date=${date}">보고서 만들기</a>
   </form>
 </div>
-${notice(msg)}
 ${section('전주 실적', carry)}
 ${section('금주 예정')}`
   return page({ title: '주간업무', path: '/weekly', body })
@@ -336,7 +332,7 @@ ${section('금주 예정')}`
 
 /* ── 개발현황 ─────────────────────────────────────────────── */
 
-export function seriesPage({ series, palette, msg }) {
+export function seriesPage({ series, palette }) {
   const colorSelect = (name, value) =>
     `<select name="color" style="width:104px" aria-label="${esc(name)} 색">` +
     palette
@@ -358,7 +354,6 @@ export function seriesPage({ series, palette, msg }) {
   const body = `
 <div class="head"><div><h1>개발현황</h1>
   <p>단계별 진행률을 넣으면 총 진행률이 가중치대로 계산됩니다.</p></div></div>
-${notice(msg)}
 
 ${
   series.length
@@ -433,11 +428,10 @@ document.querySelectorAll('[data-series]').forEach(function (card) {
 
 /* ── 보고서 ─────────────────────────────────────────────── */
 
-export function reportsPage({ kind, date, report, history, msg, msgKind, driveReady }) {
+export function reportsPage({ kind, date, report, history, driveReady }) {
   const body = `
 <div class="head"><div><h1>보고서</h1>
   <p>${kind === 'daily' ? koreanDate(date) : koreanWeek(date)}</p></div></div>
-${notice(msg, msgKind)}
 
 <div class="card">
   <div class="tabs">
