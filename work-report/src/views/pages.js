@@ -380,17 +380,8 @@ ${
   </div>`).join('')}
   <div class="row" style="margin-bottom:18px"><button class="btn">저장</button></div>
 </form>`
-    : '<p class="empty">시리즈가 없습니다. 아래에서 추가하세요.</p>'
+    : '<p class="empty">시리즈가 없습니다. 아래 [시리즈 추가]에서 넣으세요.</p>'
 }
-
-<div class="card">
-  <div class="chead"><h2>시리즈 추가</h2></div>
-  <form method="post" action="/series/new" class="row">
-    <input name="name" class="grow" placeholder="예: 꼬마과학뒤집기" required>
-    ${colorSelect('새 시리즈', palette[0][1])}
-    <button class="btn">추가</button>
-  </form>
-</div>
 
 <div class="card">
   <div class="chead"><h2>미리보기</h2>
@@ -408,6 +399,15 @@ ${
   </div>`
       : '<p class="empty">표시할 시리즈가 없습니다.</p>'
   }
+</div>
+
+<div class="card">
+  <div class="chead"><h2>시리즈 추가</h2></div>
+  <form method="post" action="/series/new" class="row">
+    <input name="name" class="grow" placeholder="예: 꼬마과학뒤집기" required>
+    ${colorSelect('새 시리즈', palette[0][1])}
+    <button class="btn">추가</button>
+  </form>
 </div>
 
 <script>
