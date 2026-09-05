@@ -366,10 +366,16 @@ ${
     </div>
     <div class="fld" style="margin-bottom:12px">
       <label class="lblrow">세부내용 · 한 줄에 하나씩 적으면 글머리로 들어갑니다
-        ${l.prev_detail
-          ? `<a href="#" class="prevfill"
-               data-prev="${esc(l.prev_detail).replace(/\n/g, '&#10;')}">직전 내용 가져오기</a>`
-          : ''}</label>
+        ${
+          // 목록에서 고른 줄에는 늘 자리를 둔다. 가져올 것이 없을 때 글자가 아예
+          // 사라지면 기능이 없는 것인지 내용이 없는 것인지 알 수 없다.
+          !l.task_id
+            ? ''
+            : l.prev_detail
+              ? `<a href="#" class="prevfill"
+                   data-prev="${esc(l.prev_detail).replace(/\n/g, '&#10;')}">직전 내용 가져오기</a>`
+              : '<span class="muted">직전 내용 없음</span>'
+        }</label>
       <textarea name="detail_text" rows="3">${esc((l.detail_lines || []).join('\n'))}</textarea>
     </div>
   </form>

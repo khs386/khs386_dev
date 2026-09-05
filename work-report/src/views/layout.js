@@ -137,7 +137,8 @@ nav.top .right{margin-left:auto}
 .fld{display:flex; flex-direction:column; gap:5px}
 /* 이름표 오른쪽 끝에 거는 글자 단추. 상자 위 한 줄을 이름표와 나눠 쓴다. */
 .fld label.lblrow{display:flex; justify-content:space-between; align-items:baseline; gap:12px}
-.fld label.lblrow a{font-size:13px; white-space:nowrap}
+.fld label.lblrow a,.fld label.lblrow .muted{font-size:13px; white-space:nowrap}
+.fld label.lblrow .muted{color:var(--text-3); opacity:.65}
 .fld label{font-size:12px; color:var(--text-3); letter-spacing:0;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 
