@@ -20,7 +20,9 @@
     "db:migrate6": "wrangler d1 execute work-report --remote --file=./migrations/0006_brief_items.sql",
     "db:migrate6:local": "wrangler d1 execute work-report --local --file=./migrations/0006_brief_items.sql",
     "db:migrate7": "wrangler d1 execute work-report --remote --file=./migrations/0007_work_type_series.sql",
-    "db:migrate7:local": "wrangler d1 execute work-report --local --file=./migrations/0007_work_type_series.sql"
+    "db:migrate7:local": "wrangler d1 execute work-report --local --file=./migrations/0007_work_type_series.sql",
+    "db:link": "wrangler d1 execute work-report --remote --file=./migrations/0008_link_work_type_series.sql",
+    "db:link:local": "wrangler d1 execute work-report --local --file=./migrations/0008_link_work_type_series.sql"
   },
   "dependencies": {
     "hono": "^4.6.0"
