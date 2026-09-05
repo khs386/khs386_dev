@@ -54,7 +54,9 @@ ${briefCard(brief, today)}
     <span class="count">전주 실적 ${weekly.prev}건 · 금주 예정 ${weekly.plan}건</span></div>
   ${
     weekly.prev + weekly.plan
-      ? `<div class="row"><a class="btn alt" href="/reports?kind=weekly&date=${today}">주간 보고서 만들기</a></div>`
+      ? `<div class="row"><a class="btn alt" href="/reports?kind=weekly&date=${today}">주간 보고서 만들기</a></div>
+         ${weekly.plan ? '' : `<p class="count" style="margin-top:10px">금주 예정 업무가 없습니다.
+           <a href="/weekly">주간업무</a>에서 채우세요.</p>`}`
       : `<p class="empty">이번 주 항목이 없습니다. <a href="/weekly">주간업무</a>에서 채우세요.</p>`
   }
 </div>
@@ -581,15 +583,14 @@ export function reportsPage({ kind, date, report, history, driveReady }) {
 ${
   report
     ? `<div class="card">
-        <div class="chead"><h2>미리보기</h2><span class="count mono">${esc(report.filename)}</span></div>
+        <div class="chead">
+          <div class="row"><h2>미리보기</h2>
+            <a href="/reports/preview?kind=${kind}&date=${date}"
+               target="_blank" rel="noreferrer">새 탭에서 크게 보기</a></div>
+          <span class="count mono">${esc(report.filename)}</span></div>
         <iframe class="preview" title="보고서 미리보기" src="/reports/preview?kind=${kind}&date=${date}"></iframe>
-        <p class="count" style="margin-top:10px">
-          ${report.drive_link ? '드라이브에 저장됨 · ' : ''}<a
-            href="/reports/preview?kind=${kind}&date=${date}" target="_blank" rel="noreferrer">새 탭에서 크게 보기</a>${
-            report.drive_link
-              ? ` · <a href="${esc(report.drive_link)}" target="_blank" rel="noreferrer">파일 열기</a>`
-              : ''}
-        </p>
+        ${report.drive_link ? `<p class="count" style="margin-top:10px">드라이브에 저장됨 ·
+          <a href="${esc(report.drive_link)}" target="_blank" rel="noreferrer">파일 열기</a></p>` : ''}
       </div>`
     : '<p class="empty">아직 만들어진 보고서가 없습니다. 날짜를 고르고 "보고서 만들기"를 누르세요.</p>'
 }
