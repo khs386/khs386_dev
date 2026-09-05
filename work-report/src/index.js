@@ -170,6 +170,11 @@ app.post('/tasks/:id/archive', async (c) => {
   )
 })
 
+app.post('/tasks/archive-done', async (c) => {
+  const n = await db.archiveDoneTasks(c.env.DB)
+  return back(c, '/tasks', n ? `완료된 업무 ${n}건을 보관했습니다.` : '보관할 완료 업무가 없습니다.')
+})
+
 app.post('/tasks/:id/delete', async (c) => {
   await db.deleteTask(c.env.DB, c.req.param('id'))
   return back(c, '/tasks', '삭제했습니다.')

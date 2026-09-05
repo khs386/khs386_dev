@@ -94,6 +94,7 @@ export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, ar
     }
     return list
   }
+  const doneCount = tasks.filter((t) => t.status === '완료').length
   const f = editing || {
     title: '', series: seriesNames[0] || '',
     work_type: (forSeries(seriesNames[0] || '')[0] || {}).name || '',
@@ -148,16 +149,41 @@ export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, ar
   const body = `
 <div class="head">
   <div><h1>단위업무</h1><p>보고서에 들어가는 업무 목록입니다. 여기서 상태와 진행률을 관리합니다.</p></div>
-  <a class="btn ghost sm" href="/tasks${archived ? '' : '?archived=1'}">
-    ${archived ? '진행 중 목록 보기' : `보관함 보기${archivedCount ? ` (${archivedCount})` : ''}`}</a>
+  <div class="row">
+    ${
+      // 저절로 보관하지는 않는다. 다시 손댈 업무가 말없이 사라지면 더 불편하다.
+      !archived && doneCount
+        ? `<form method="post" action="/tasks/archive-done" class="inline"
+                 onsubmit="return confirm('완료된 업무 ${doneCount}건을 보관함으로 옮길까요? 기록은 그대로 남습니다.')">
+             <button class="btn ghost sm">완료 업무 보관 (${doneCount})</button></form>`
+        : ''
+    }
+    <a class="btn ghost sm" href="/tasks${archived ? '' : '?archived=1'}">
+      ${archived ? '진행 중 목록 보기' : `보관함 보기${archivedCount ? ` (${archivedCount})` : ''}`}</a>
+  </div>
 </div>
 ${archived ? '' : form}
 <div class="card">
   <div class="chead"><h2>${archived ? '보관함' : '단위업무 목록'}</h2>
-    <span class="count">${tasks.length}건</span></div>
+    <span class="count" data-count>${tasks.length}건</span></div>
+  ${
+    // 목록은 시간이 갈수록 길어진다. 이름·시리즈·상태로 좁혀 볼 수 있게 한다.
+    // 화면에서 거르므로 다시 불러오지 않는다.
+    tasks.length > 5
+      ? `<div class="row filters">
+    <input class="grow" data-q placeholder="업무명으로 찾기" aria-label="업무명으로 찾기">
+    <select data-fs aria-label="시리즈로 거르기"><option value="">모든 시리즈</option>
+      ${seriesNames.map((n) => `<option>${esc(n)}</option>`).join('')}</select>
+    <select data-ft aria-label="진행 상태로 거르기"><option value="">모든 상태</option>
+      ${STATUSES.map((n) => `<option>${esc(n)}</option>`).join('')}</select>
+  </div>`
+      : ''
+  }
   ${
     tasks.length
-      ? tasks.map((t) => `<div class="item cols">
+      ? tasks.map((t) => `<div class="item cols" data-row
+          data-title="${esc(t.title)}" data-series="${esc(t.series || '')}"
+          data-status="${esc(t.status || '')}">
           <span class="t">${esc(t.title)}${t.is_misc ? ' <span class="tag">기타</span>' : ''}</span>
           <span class="c">${t.work_type ? tag(t.work_type) : ''}</span>
           <span class="c">${pill(displayStatus(t.status), statusTint(t.status))}</span>
@@ -172,14 +198,46 @@ ${archived ? '' : form}
               <input type="hidden" name="archived" value="${t.archived ? '0' : '1'}">
               <button class="btn ghost sm">${t.archived ? '복구' : '보관'}</button></form>
             <form method="post" action="/tasks/${t.id}/delete" class="inline"
-                  onsubmit="return confirm('&quot;${jsq(t.title)}&quot; 을(를) 지웁니다. 딸린 일일업무 기록도 함께 지워집니다. 계속할까요?')">
+                  onsubmit="return confirm('&quot;${jsq(t.title)}&quot; 을(를) 목록에서 지웁니다. 지난 일일·주간 기록은 그대로 남습니다. 계속할까요?')">
               <button class="btn danger sm">삭제</button></form>
           </span>
         </div>`).join('')
       : '<p class="empty">업무가 없습니다.</p>'
   }
+  <p class="empty" data-none hidden>찾는 업무가 없습니다.</p>
 </div>
-${archived ? '' : workTypeCard(workTypes, seriesNames)}`
+${archived ? '' : workTypeCard(workTypes, seriesNames)}
+<script>
+// 목록 거르개. 이름·시리즈·상태 세 가지를 함께 본다.
+;(function () {
+  var box = document.querySelector('.filters')
+  if (!box) return
+  var card = box.closest('.card')
+  var q = box.querySelector('[data-q]')
+  var fs = box.querySelector('[data-fs]')
+  var ft = box.querySelector('[data-ft]')
+  var rows = [].slice.call(card.querySelectorAll('[data-row]'))
+  var count = card.querySelector('[data-count]')
+  var none = card.querySelector('[data-none]')
+  function run() {
+    var t = q.value.trim().toLowerCase()
+    var n = 0
+    rows.forEach(function (r) {
+      var ok =
+        (!t || r.getAttribute('data-title').toLowerCase().indexOf(t) >= 0) &&
+        (!fs.value || r.getAttribute('data-series') === fs.value) &&
+        (!ft.value || r.getAttribute('data-status') === ft.value)
+      r.hidden = !ok
+      if (ok) n++
+    })
+    count.textContent = n === rows.length ? rows.length + '건' : n + ' / ' + rows.length + '건'
+    none.hidden = n > 0
+  }
+  q.addEventListener('input', run)
+  fs.addEventListener('change', run)
+  ft.addEventListener('change', run)
+})()
+<\/script>`
   return page({ title: '단위업무', path: '/tasks', body })
 }
 
@@ -346,6 +404,77 @@ function workTypeCard(workTypes, seriesNames) {
 </div>`
 }
 
+/* ── 업무 고르는 칸 ─────────────────────────────────────── */
+
+/**
+ * 업무를 고르는 칸. 목록은 시간이 갈수록 길어지므로 두 가지를 얹는다.
+ *   - 시리즈로 묶어 어느 갈래인지 한눈에 보이게 한다.
+ *   - 여남은 개를 넘으면 글자로 걸러 내는 칸을 앞에 둔다.
+ */
+function taskPicker(tasks) {
+  const opt = (t) => `<option value="${esc(t.id)}">${esc(t.title)}</option>`
+  const groups = []
+  for (const t of tasks) {
+    const name = t.series || ''
+    let g = groups.find((x) => x.name === name)
+    if (!g) groups.push((g = { name, items: [] }))
+    g.items.push(t)
+  }
+  const body = groups
+    .map((g) =>
+      g.name
+        ? `<optgroup label="${esc(g.name)}">${g.items.map(opt).join('')}</optgroup>`
+        : g.items.map(opt).join('')
+    )
+    .join('')
+  return (
+    `<span class="picker row grow">` +
+    (tasks.length > 8
+      ? `<input class="pq" data-pq placeholder="찾기" aria-label="업무 찾기">`
+      : '') +
+    `<select name="task_id" class="grow">` +
+    `<option value="">업무 목록에서 선택</option>${body}</select></span>`
+  )
+}
+
+/** 고르는 칸의 글자 거르개. 일일업무·주간업무 두 화면이 함께 쓴다. */
+const PICKER_JS = `
+<script>
+;(function () {
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
+  }
+  document.querySelectorAll('.picker').forEach(function (box) {
+    var q = box.querySelector('[data-pq]')
+    var sel = box.querySelector('select')
+    if (!q || !sel) return
+    var all = [].map.call(sel.querySelectorAll('option'), function (o) {
+      return {
+        v: o.value, t: o.textContent,
+        g: o.parentElement.tagName === 'OPTGROUP' ? o.parentElement.label : '',
+      }
+    })
+    q.addEventListener('input', function () {
+      var t = q.value.trim().toLowerCase()
+      var list = all.filter(function (o) { return !o.v || o.t.toLowerCase().indexOf(t) >= 0 })
+      var html = '', g = ''
+      list.forEach(function (o) {
+        if (o.g !== g) {
+          if (g) html += '</optgroup>'
+          g = o.g
+          if (g) html += '<optgroup label="' + esc(g) + '">'
+        }
+        html += '<option value="' + esc(o.v) + '">' + esc(o.t) + '</option>'
+      })
+      if (g) html += '</optgroup>'
+      sel.innerHTML = html
+      // 걸러 낸 첫 후보를 바로 고른다. 한 번 더 누르지 않아도 되게.
+      sel.selectedIndex = list.length > 1 ? 1 : 0
+    })
+  })
+})()
+<\/script>`
+
 /* ── 일일업무 ──────────────────────────────────────────── */
 
 const savedMark = (on) =>
@@ -366,10 +495,7 @@ ${skip ? notice(`${date === today ? '오늘' : '이 날'}은 <b>${skip}</b>입�
   <div class="chead"><h2>업무 추가</h2><span class="count">${logs.length}건 기록됨</span></div>
   <form method="post" action="/daily/add" class="row">
     <input type="hidden" name="date" value="${date}">
-    <select name="task_id" class="grow">
-      <option value="">업무 목록에서 선택</option>
-      ${available.map((t) => `<option value="${t.id}">${esc(t.title)}</option>`).join('')}
-    </select>
+    ${taskPicker(available)}
     <button class="btn"${available.length ? '' : ' disabled'}>추가</button>
   </form>
   <form method="post" action="/daily/add-free" class="row" style="margin-top:9px">
@@ -443,7 +569,8 @@ document.addEventListener('click', function (e) {
   box.value = a.getAttribute('data-prev')
   box.focus()
 })
-<\/script>`
+<\/script>
+${PICKER_JS}`
   return page({ title: '일일업무', path: '/daily', body })
 }
 
@@ -464,10 +591,7 @@ export function weeklyPage({ date, weekStart, items, tasks, workTypes, saved }) 
   <form method="post" action="/weekly/add" class="row">
     <input type="hidden" name="date" value="${date}">
     <input type="hidden" name="kind" value="${kind}">
-    <select name="task_id" class="grow">
-      <option value="">업무 목록에서 선택</option>
-      ${tasks.map((t) => `<option value="${t.id}">${esc(t.title)}</option>`).join('')}
-    </select>
+    ${taskPicker(tasks)}
     <button class="btn"${tasks.length ? '' : ' disabled'}>추가</button>
   </form>
   <form method="post" action="/weekly/add-free" class="row" style="margin-top:9px">
@@ -533,7 +657,8 @@ ${byKind(kind).map((i) => itemCard(i, kind)).join('') ||
   </form>
 </div>
 ${section('전주 실적', carry)}
-${section('금주 예정')}`
+${section('금주 예정')}
+${PICKER_JS}`
   return page({ title: '주간업무', path: '/weekly', body })
 }
 

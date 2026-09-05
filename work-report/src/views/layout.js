@@ -128,6 +128,12 @@ nav.top .right{margin-left:auto}
 .wtname{flex:0 1 320px; max-width:320px}
 /* 유형이 속한 시리즈. 이름 칸 옆에 나란히 둔다. */
 .wtseries{flex:0 0 auto; width:190px}
+/* 업무를 고르는 칸과 그 앞의 글자 거르개. */
+.picker{flex:1 1 260px; gap:8px}
+.pq{flex:0 0 auto; width:150px}
+/* 목록 거르개. 목록이 길어질 때만 나온다. */
+.filters{margin-bottom:12px}
+.filters select{flex:0 0 auto; width:160px}
 /* 새로 추가하는 자리는 위의 목록과 눈에 띄게 갈라 놓는다. */
 .addrow{margin-top:20px; padding-top:16px; border-top:1px solid var(--sep)}
 .addrow .lbl{display:block; font-size:12px; color:var(--text-3); margin-bottom:8px}

@@ -21,11 +21,18 @@ const rowLog = (r) => ({ ...r, is_misc: !!r.is_misc, detail_lines: parseLines(r.
 
 /* ── 단위 업무 ─────────────────────────────────────────── */
 
+/**
+ * 단위업무 목록.
+ *
+ * 마감일만으로 줄을 세우면 끝난 지 오래된 업무가 맨 위에 온다. 시간이 갈수록
+ * 나빠지므로 완료·보류를 먼저 아래로 내리고, 그 안에서 마감일 순으로 둔다.
+ */
 export async function listTasks(db, { archived = false } = {}) {
   const { results } = await db
     .prepare(
       `select * from tasks where archived = ?
-       order by (deadline is null), deadline, created_at`
+       order by case when status in ('완료', '보류') then 1 else 0 end,
+                (deadline is null), deadline, created_at`
     )
     .bind(bool(archived))
     .all()
@@ -65,8 +72,27 @@ export async function setTaskArchived(db, id, archived) {
   await db.prepare('update tasks set archived = ? where id = ?').bind(bool(archived), id).run()
 }
 
+/**
+ * 단위업무를 지운다. 지난 기록은 남는다.
+ *
+ * daily_logs는 제목·세부내용·상태를 제 안에 갖고 있어 단위업무가 없어도 기록으로
+ * 완결된다. 그런데 외래키가 on delete cascade라 함께 지워졌다. 지운 날이 지난
+ * 사실까지 지울 이유는 없다. 연결만 먼저 끊어 두면 cascade가 걸리지 않는다.
+ * 주간 항목은 원래 set null이라 남는다 — 이제 규칙이 같아졌다.
+ */
 export async function deleteTask(db, id) {
-  await db.prepare('delete from tasks where id = ?').bind(id).run()
+  await db.batch([
+    db.prepare('update daily_logs set task_id = null where task_id = ?').bind(id),
+    db.prepare('delete from tasks where id = ?').bind(id),
+  ])
+}
+
+/** 완료된 업무를 한꺼번에 보관함으로 옮긴다. 옮긴 건수를 돌려준다. */
+export async function archiveDoneTasks(db) {
+  const r = await db
+    .prepare("update tasks set archived = 1 where archived = 0 and status = '완료'")
+    .run()
+  return r?.meta?.changes || 0
 }
 
 /* ── 일별 기록 ─────────────────────────────────────────── */
