@@ -24,15 +24,23 @@ const rowLog = (r) => ({ ...r, is_misc: !!r.is_misc, detail_lines: parseLines(r.
 /**
  * 단위업무 목록.
  *
- * 마감일만으로 줄을 세우면 끝난 지 오래된 업무가 맨 위에 온다. 시간이 갈수록
- * 나빠지므로 완료·보류를 먼저 아래로 내리고, 그 안에서 마감일 순으로 둔다.
+ * 먼저 시리즈로 묶는다. 시리즈끼리의 차례는 개발현황 화면에서 매긴 순서를
+ * 그대로 따르고, 딸린 시리즈가 없는 업무는 맨 뒤에 둔다.
+ *
+ * 묶음 안에서는, 마감일만으로 줄을 세우면 끝난 지 오래된 업무가 맨 위에 온다.
+ * 시간이 갈수록 나빠지므로 완료·보류를 먼저 아래로 내리고, 그 안에서 마감일
+ * 순으로 둔다.
  */
 export async function listTasks(db, { archived = false } = {}) {
   const { results } = await db
     .prepare(
-      `select * from tasks where archived = ?
-       order by case when status in ('완료', '보류') then 1 else 0 end,
-                (deadline is null), deadline, created_at`
+      `select t.* from tasks t
+       left join series_progress s on s.name = t.series
+       where t.archived = ?
+       order by (t.series is null or t.series = ''),
+                coalesce(s.sort_order, 999999), t.series,
+                case when t.status in ('완료', '보류') then 1 else 0 end,
+                (t.deadline is null), t.deadline, t.created_at`
     )
     .bind(bool(archived))
     .all()

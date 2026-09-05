@@ -22,8 +22,8 @@ export const sheetBox = (id, heading, extra) => `
     <h2>${heading}</h2>
     <div class="row">
       <span class="count" data-count="${id}">0건</span>${extra || ''}
-      <button type="button" class="btn ghost sm" data-save-now="${id}">저장</button>
       <span class="shsave" data-save="${id}"><span class="dot"></span><span class="txt">저장됨</span></span>
+      <button type="button" class="shretry" data-save-now="${id}" hidden>다시 저장</button>
     </div>
   </div>
   <div class="row">
@@ -65,6 +65,9 @@ export const SHEET_CSS = `
 .card + .sheet{border-top:0; border-top-left-radius:0; border-top-right-radius:0;
   margin-bottom:22px}
 .shsave{margin-left:2px; font-size:12.5px; color:var(--text-3); display:inline-flex; align-items:center; gap:6px}
+.shretry{appearance:none; border:0; background:transparent; color:var(--accent); cursor:pointer;
+  font-size:12.5px; padding:2px 3px; text-decoration:underline}
+.shretry:hover{opacity:.75}
 .shsave .dot{width:7px; height:7px; border-radius:50%; background:var(--green)}
 .shsave.busy .dot{background:var(--orange)}
 .shsave.bad .dot{background:var(--red)}
@@ -394,6 +397,9 @@ function mark (id, cls, txt) {
   var b = document.querySelector('[data-save="' + id + '"]'); if (!b) return
   b.className = 'shsave' + (cls ? ' ' + cls : '')
   b.querySelector('.txt').textContent = txt
+  // [다시 저장]은 못 보낸 것이 있을 때만 내놓는다. 평소에는 누를 일이 없다.
+  var r = document.querySelector('[data-save-now="' + id + '"]')
+  if (r) r.hidden = cls !== 'bad'
 }
 function save (id, row) {
   var g = G[id]
