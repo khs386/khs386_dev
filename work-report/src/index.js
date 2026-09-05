@@ -470,6 +470,21 @@ app.get('/reports/download', async (c) => {
 // 아침마다 클라우드의 Claude가 캘린더·메일을 읽고 브리프를 써서 이리로 보낸다.
 // 앱은 받아서 보여주기만 한다. 앱 비밀번호가 아니라 전용 열쇠로 확인하는데,
 // 이 문으로 할 수 있는 일은 브리프를 넣는 것 하나뿐이다.
+/**
+ * 브리프 항목 제목만 골라 낸다. 요약 칸에 그대로 그려지는 값이라 길이와 개수를 자른다.
+ * 화면에는 esc를 거쳐 들어가므로 여기서는 모양만 다듬는다.
+ */
+function cleanItems(v) {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const pick = (k) =>
+    (Array.isArray(v[k]) ? v[k] : [])
+      .filter((x) => typeof x === 'string' && x.trim())
+      .slice(0, 12)
+      .map((x) => x.trim().slice(0, 120))
+  const out = { events: pick('events'), todo: pick('todo'), done: pick('done') }
+  return out.events.length || out.todo.length || out.done.length ? out : null
+}
+
 app.post('/api/brief', async (c) => {
   if (!c.env.BRIEF_TOKEN) return c.json({ error: 'BRIEF_TOKEN이 설정되지 않았습니다.' }, 503)
   const given = (c.req.header('authorization') || '').replace(/^Bearer\s+/i, '')
@@ -493,6 +508,7 @@ app.post('/api/brief', async (c) => {
     events: body.events, todo: body.todo, done: body.done,
     headline: typeof body.headline === 'string' ? body.headline.slice(0, 200) : null,
     source: typeof body.source === 'string' ? body.source.slice(0, 60) : 'cloud',
+    items: cleanItems(body.items),
   })
   return c.json({ ok: true, date, bytes: html.length })
 })

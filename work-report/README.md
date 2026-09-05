@@ -152,7 +152,9 @@ SESSION_SECRET=아무거나
 
 - 받는 문: `POST /api/brief` · 헤더 `Authorization: Bearer <BRIEF_TOKEN>`
 - 본문(JSON): `date`(YYYY-MM-DD) · `html`(브리프 한 장) · `events` · `todo` · `done` ·
-  `headline`(한 줄 요약) · `source`
+  `headline`(한 줄 요약) · `items` · `source`
+- `items`는 `{"events":[…],"todo":[…],"done":[…]}` 모양이고 각 항목의 제목만 담습니다.
+  데일리 브리프의 요약 칸에 숫자와 함께 제목이 보입니다 (칸마다 다섯 개까지).
 - 같은 날짜로 다시 보내면 덮어씁니다. `html`은 900KB까지 받습니다.
 - 보기: 데일리 브리프 맨 위 칸, 또는 `/brief` (날짜별·지난 30일)
 

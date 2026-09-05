@@ -378,19 +378,34 @@ export async function moveWorkType(db, name, dir) {
 export async function saveBrief(db, b) {
   await db
     .prepare(
-      `insert into briefs (brief_date, html, events, todo, done, headline, source, created_at)
-       values (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+      `insert into briefs (brief_date, html, events, todo, done, headline, source, items, created_at)
+       values (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
        on conflict(brief_date) do update set
          html = excluded.html, events = excluded.events, todo = excluded.todo,
          done = excluded.done, headline = excluded.headline, source = excluded.source,
-         created_at = datetime('now')`
+         items = excluded.items, created_at = datetime('now')`
     )
-    .bind(b.date, b.html, num(b.events), num(b.todo), num(b.done), str(b.headline), str(b.source))
+    .bind(
+      b.date, b.html, num(b.events), num(b.todo), num(b.done),
+      str(b.headline), str(b.source), b.items ? JSON.stringify(b.items) : null
+    )
     .run()
 }
 
-export const getBrief = (db, date) =>
-  db.prepare('select * from briefs where brief_date = ?').bind(date).first()
+/** items는 JSON 한 덩어리로 넣어 두었으니 읽을 때 풀어 준다. */
+export async function getBrief(db, date) {
+  const r = await db.prepare('select * from briefs where brief_date = ?').bind(date).first()
+  if (!r) return r
+  let items = {}
+  try {
+    const v = JSON.parse(r.items || '{}')
+    if (v && typeof v === 'object' && !Array.isArray(v)) items = v
+  } catch {
+    items = {}
+  }
+  const list = (k) => (Array.isArray(items[k]) ? items[k].filter((x) => typeof x === 'string') : [])
+  return { ...r, items: { events: list('events'), todo: list('todo'), done: list('done') } }
+}
 
 /** 목록에서는 html을 빼고 읽는다. 한 건이 수백 KB라 다 읽으면 느리다. */
 export const listBriefs = (db, limit = 30) =>

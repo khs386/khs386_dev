@@ -24,7 +24,7 @@ export function todayPage({ today, logs, weekly, series, soon, skip, brief }) {
 <div class="head">
   <div><h1>데일리 브리프</h1><p>${koreanDate(today)} · ${koreanWeek(today)}</p></div>
   <div class="row">
-    <a class="btn" href="/daily">일일업무 기록하기</a>
+    <a class="btn" href="/daily">일일업무</a>
     <a class="btn ghost" href="/weekly">주간업무</a>
   </div>
 </div>
@@ -45,8 +45,6 @@ ${briefCard(brief, today)}
         </div>`).join('')
       : `<p class="empty">아직 기록이 없습니다. <a href="/daily">일일업무</a>에서 오늘 진행한 업무를 넣으세요.</p>`
   }
-  ${logs.length ? `<div class="row" style="margin-top:14px">
-      <a class="btn" href="/reports?kind=daily&date=${today}">일일 보고서 만들기</a></div>` : ''}
 </div>
 
 <div class="card">
@@ -154,9 +152,25 @@ function kstTime(stamp) {
   return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
 }
 
-const briefCount = (n, label) =>
-  `<div class="bnum"><span class="bn">${n === null || n === undefined ? '–' : n}</span>` +
-  `<span class="bl">${label}</span></div>`
+/**
+ * 요약 칸 하나. 숫자만 있으면 무슨 일인지 알 수 없으므로 항목 제목을 함께 적는다.
+ * 다섯 개까지만 보이고 나머지는 "외 N건"으로 접는다.
+ */
+const briefCount = (n, label, items = []) => {
+  const shown = items.slice(0, 5)
+  const rest = items.length - shown.length
+  return (
+    `<div class="bnum">` +
+    `<span class="bl">${label}</span>` +
+    `<span class="bn">${n === null || n === undefined ? '–' : n}</span>` +
+    (shown.length
+      ? `<ul>${shown.map((t) => `<li>${esc(t)}</li>`).join('')}` +
+        (rest > 0 ? `<li class="more">외 ${rest}건</li>` : '') +
+        `</ul>`
+      : '') +
+    `</div>`
+  )
+}
 
 /** 데일리 브리프 맨 위 칸. 아침에 온 브리프의 숫자만 보여주고 본문은 /brief 에서 연다. */
 function briefCard(brief, today) {
@@ -174,9 +188,9 @@ function briefCard(brief, today) {
     <span class="count">${kstTime(brief.created_at)} 도착</span></div>
   ${brief.headline ? `<p class="bhead">${esc(brief.headline)}</p>` : ''}
   <div class="brow">
-    ${briefCount(brief.events, '오늘 일정')}
-    ${briefCount(brief.todo, '해야 할 일')}
-    ${briefCount(brief.done, '정리된 일')}
+    ${briefCount(brief.events, '오늘 일정', brief.items?.events)}
+    ${briefCount(brief.todo, '해야 할 일', brief.items?.todo)}
+    ${briefCount(brief.done, '정리된 일', brief.items?.done)}
   </div>
   <div class="row" style="margin-top:14px">
     <a class="btn" href="/brief">모닝브리프 열기</a>

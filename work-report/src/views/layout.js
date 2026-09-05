@@ -212,11 +212,18 @@ nav.top .right{margin-left:auto}
 /* 모닝브리프 칸 — 숫자 셋과 한 줄 요약 */
 .bhead{margin:0 0 12px; font-size:15px; color:var(--text-2); line-height:1.6}
 .brow{display:flex; gap:10px; flex-wrap:wrap}
-.bnum{flex:1 1 120px; padding:12px 14px; border-radius:10px; background:var(--fill);
-  display:flex; flex-direction:column; gap:2px}
-.bnum .bn{font-size:24px; font-weight:600; letter-spacing:-.02em;
-  font-variant-numeric:tabular-nums; color:var(--text)}
+.bnum{flex:1 1 210px; min-width:0; padding:13px 15px; border-radius:10px;
+  background:var(--fill); display:flex; flex-direction:column; gap:3px}
 .bnum .bl{font-size:12px; color:var(--text-2)}
+.bnum .bn{font-size:24px; font-weight:600; letter-spacing:-.02em; line-height:1.15;
+  font-variant-numeric:tabular-nums; color:var(--text)}
+.bnum ul{margin:6px 0 0; padding:0; list-style:none;
+  display:flex; flex-direction:column; gap:5px}
+.bnum li{font-size:12.5px; line-height:1.45; color:var(--text-2);
+  word-break:keep-all; padding-left:10px; position:relative}
+.bnum li::before{content:'·'; position:absolute; left:1px; color:var(--text-3)}
+.bnum li.more{color:var(--text-3)}
+.bnum li.more::before{content:''}
 iframe.brief{width:100%; height:82vh; min-height:540px; border:0;
   background:#fff; display:block}
 iframe.preview{width:100%; height:640px; border:1px solid var(--sep-soft);
