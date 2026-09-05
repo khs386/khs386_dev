@@ -525,11 +525,14 @@ app.get('/brief', async (c) => {
 /**
  * 브리프 서식 바로잡기. 문서를 만드는 쪽이 옛 서식으로 되돌아가도 화면은 맞게 나온다.
  *
- * 세 가지를 한다.
+ * 네 가지를 한다.
  *   1. 버튼 글자의 "초안 잡기"를 "초안잡기"로 붙인다.
  *   2. btn-reply / btn-remind 클래스가 없으면 글자를 보고 붙인다. 그래야 앱이
  *      정한 색과 밑줄 없는 모양이 걸린다. 문서가 직접 넣은 style은 걷어 낸다.
- *   3. 버튼 뭉치를 문장 아래에서 항목 오른쪽으로 옮긴다. 항목은 버튼 글자를 뺀
+ *   3. 항목마다 버튼을 하나만 남긴다. 리마인드가 있으면 리마인드를, 없으면
+ *      회신메일을 두고 나머지는 지운다. 둘을 겹쳐 두면 어느 쪽을 눌러야 할지
+ *      알 수 없다.
+ *   4. 남은 버튼을 문장 아래에서 항목 오른쪽으로 옮긴다. 항목은 버튼 글자를 뺀
  *      본문이 열 자 넘게 담긴 가장 작은 조상으로 찾고, 그 안에 절대 위치로 세워
  *      원래 짜임새는 건드리지 않는다. 좁은 화면에서는 아래에 그대로 둔다.
  */
@@ -566,14 +569,15 @@ function run(){
   keys.forEach(function(it,i){
     if(it.clientWidth<420)return;
     var col=document.createElement('div');
-    col.style.cssText='position:absolute;right:0;top:50%;transform:translateY(-50%);'
-      +'display:flex;flex-direction:column;gap:7px;align-items:stretch';
-    grp[i].slice().sort(function(x,y){
-      return (/회신/.test(x.textContent)?1:0)-(/회신/.test(y.textContent)?1:0)})
-      .forEach(function(a){
-        var h=a.parentElement; col.appendChild(a);
-        while(h&&h!==it&&!h.textContent.trim()&&!h.querySelector('img,svg')){
-          var up=h.parentElement; up.removeChild(h); h=up}});
+    col.style.cssText='position:absolute;right:0;top:50%;transform:translateY(-50%)';
+    var rem=[],rep=[];
+    grp[i].forEach(function(a){(/회신/.test(a.textContent)?rep:rem).push(a)});
+    var keep=(rem.length?rem:rep)[0];
+    grp[i].forEach(function(a){
+      var h=a.parentElement;
+      if(a===keep)col.appendChild(a);else h.removeChild(a);
+      while(h&&h!==it&&!h.textContent.trim()&&!h.querySelector('img,svg')){
+        var up=h.parentElement; up.removeChild(h); h=up}});
     it.setAttribute('data-fxcol','1');
     if(getComputedStyle(it).position==='static')it.style.position='relative';
     it.appendChild(col);
