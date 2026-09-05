@@ -10,12 +10,35 @@ export const jsonBlock = (id, data) =>
   JSON.stringify(data).replace(/</g, '\\u003c') +
   '</script>'
 
-/** 표가 들어갈 자리. 안은 스크립트가 채운다. */
-export const sheetBox = (id, head) => `
-<div class="shbar">
-  ${head}
-  <span class="shsp"></span>
-  <span class="shsave" data-save="${id}"><span class="dot"></span><span class="txt">저장됨</span></span>
+/**
+ * 업무를 넣는 카드와 그 아래 표.
+ *
+ * 고르는 칸은 서버가 비워 두고 스크립트가 채운다. 표에 이미 들어간 업무는
+ * 목록에서 빠져야 하는데, 그 목록은 줄이 늘고 줄 때마다 달라지기 때문이다.
+ */
+export const sheetBox = (id, heading, extra) => `
+<div class="card" data-add="${id}">
+  <div class="chead">
+    <h2>${heading}</h2>
+    <div class="row">
+      <span class="count" data-count="${id}">0건</span>${extra || ''}
+      <span class="shsave" data-save="${id}"><span class="dot"></span><span class="txt">저장됨</span></span>
+    </div>
+  </div>
+  <div class="row">
+    <span class="picker row grow">
+      <input class="pq" data-pq placeholder="찾기" aria-label="업무 찾기" hidden>
+      <select class="grow" data-pick aria-label="업무 목록">
+        <option value="">업무 목록에서 선택</option>
+      </select>
+    </span>
+    <button type="button" class="btn" data-addpick>추가</button>
+  </div>
+  <div class="row" style="margin-top:9px">
+    <input class="grow" data-free placeholder="직접 입력 (예: 기타 사항)"
+           aria-label="직접 입력할 업무명">
+    <button type="button" class="btn ghost" data-addfree>직접 추가</button>
+  </div>
 </div>
 <div class="sheet" id="sh-${id}"></div>`
 
@@ -37,10 +60,10 @@ export const SHEET_HELP = `
 
 export const SHEET_CSS = `
 /* ── 시트 ─────────────────────────────────────────────── */
-.shbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:20px 0 9px}
-.shbar h2{font-size:16px; margin:0; font-weight:600; letter-spacing:-.015em}
-.shsp{flex:1}
-.shsave{font-size:12.5px; color:var(--text-3); display:inline-flex; align-items:center; gap:6px}
+.card:has(+ .sheet){margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0}
+.card + .sheet{border-top:0; border-top-left-radius:0; border-top-right-radius:0;
+  margin-bottom:22px}
+.shsave{margin-left:2px; font-size:12.5px; color:var(--text-3); display:inline-flex; align-items:center; gap:6px}
 .shsave .dot{width:7px; height:7px; border-radius:50%; background:var(--green)}
 .shsave.busy .dot{background:var(--orange)}
 .shsave.bad .dot{background:var(--red)}
@@ -239,8 +262,89 @@ function draw (id) {
   document.getElementById('sh-' + id).innerHTML = h + '</tbody></table>'
   var n = document.querySelector('[data-count="' + id + '"]')
   if (n) n.textContent = g.rows.length + '건'
+  fillPicker(id)
 }
 function drawAll () { Object.keys(G).forEach(draw); paint() }
+
+/* ── 업무를 넣는 카드 ──────────────────────────────────── */
+
+/** 고르는 칸을 다시 채운다. 표에 이미 들어간 업무는 뺀다. */
+function fillPicker (id) {
+  var box = document.querySelector('[data-add="' + id + '"]')
+  if (!box) return
+  var g = G[id], sel = box.querySelector('[data-pick]'), q = box.querySelector('[data-pq]')
+  var pool = tasksFor(g, null)
+  var keep = sel.value
+  var text = q && !q.hidden ? q.value.trim().toLowerCase() : ''
+  var h = '<option value="">업무 목록에서 선택</option>', last = null, open = false
+  pool.forEach(function (t) {
+    if (text && t.title.toLowerCase().indexOf(text) < 0 &&
+        (t.series || '').toLowerCase().indexOf(text) < 0) return
+    var s = t.series || ''
+    if (s !== last) {
+      if (open) h += '</optgroup>'
+      last = s; open = !!s
+      if (open) h += '<optgroup label="' + esc(s) + '">'
+    }
+    h += '<option value="' + esc(t.id) + '">' + esc(t.title) + '</option>'
+  })
+  if (open) h += '</optgroup>'
+  sel.innerHTML = h
+  sel.value = keep
+  // 걸러 낸 첫 후보를 바로 고른다. 한 번 더 누르지 않아도 되게.
+  if (!sel.value && text && sel.options.length > 1) sel.selectedIndex = 1
+  if (q) q.hidden = pool.length <= 8
+  sel.disabled = !pool.length
+  box.querySelector('[data-addpick]').disabled = !pool.length
+}
+
+/** 카드에서 넣은 업무를 표 맨 아래에 한 줄로 꽂는다. */
+function addRow (id, seed) {
+  var g = G[id]
+  var row = blank(g)
+  row.title = seed.title
+  row.task_id = seed.task_id || null
+  g.cols.forEach(function (c) { if (c.t === 'pick') row[c.k] = seed.work_type || '' })
+  g.rows.push(row)
+  draw(id)
+  save(id, row)
+  // 넣자마자 이어서 적을 수 있게, 손이 갈 칸으로 옮겨 준다.
+  var c = 0
+  g.cols.forEach(function (cc, i) { if (!c && cc.t === 'multi') c = i })
+  if (!c) g.cols.forEach(function (cc, i) { if (!c && cc.t === 'task') c = i + 1 })
+  select(id, g.rows.length - 1, Math.min(c, g.cols.length - 1))
+}
+
+document.addEventListener('click', function (ev) {
+  var b = ev.target.closest('[data-addpick],[data-addfree]')
+  if (!b || b.disabled) return
+  var box = b.closest('[data-add]'), id = box.getAttribute('data-add')
+  if (b.hasAttribute('data-addpick')) {
+    var s = box.querySelector('[data-pick]')
+    if (!s.value) { toast('업무를 고르지 않았습니다.'); s.focus(); return }
+    var t = null
+    D.tasks.forEach(function (x) { if (x.id === s.value) t = x })
+    if (t) addRow(id, {title: t.title, task_id: t.id, work_type: t.work_type})
+  } else {
+    var f = box.querySelector('[data-free]'), title = f.value.trim()
+    if (!title) { toast('업무명을 입력하세요.'); f.focus(); return }
+    addRow(id, {title: title, task_id: null, work_type: ''})
+    f.value = ''
+  }
+})
+document.addEventListener('input', function (ev) {
+  var q = ev.target
+  if (q.hasAttribute && q.hasAttribute('data-pq')) fillPicker(q.closest('[data-add]').getAttribute('data-add'))
+})
+document.addEventListener('keydown', function (ev) {
+  if (ev.key !== 'Enter') return
+  var t = ev.target
+  if (t.hasAttribute && t.hasAttribute('data-free')) {
+    ev.preventDefault(); t.closest('[data-add]').querySelector('[data-addfree]').click()
+  } else if (t.hasAttribute && (t.hasAttribute('data-pick') || t.hasAttribute('data-pq'))) {
+    ev.preventDefault(); t.closest('[data-add]').querySelector('[data-addpick]').click()
+  }
+})
 
 /* ── 고를 수 있는 값 ───────────────────────────────────── */
 

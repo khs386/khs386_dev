@@ -450,8 +450,7 @@ export function dailyPage({ date, logs, tasks, hasTasks, skip, today }) {
 </div>
 ${skip ? notice(`${date === today ? '오늘' : '이 날'}은 <b>${skip}</b>입니다. 자동 생성은 건너뜁니다.`, 'warn') : ''}
 ${hasTasks ? '' : notice('아직 단위업무가 없습니다. <a href="/tasks">단위업무</a>에서 먼저 등록하면 목록에서 고를 수 있습니다.', 'warn')}
-${sheetBox('daily', `<h2>${koreanDate(date)}</h2>
-  <span class="count" data-count="daily">${logs.length}건</span>`)}
+${sheetBox('daily', '업무 추가')}
 ${SHEET_HELP}
 <noscript><p class="note err">이 화면은 자바스크립트가 켜져 있어야 씁니다.</p></noscript>
 ${jsonBlock('sheet-data', data)}
@@ -507,10 +506,8 @@ export function weeklyPage({ date, weekStart, items, tasks, workTypes, today }) 
     <a class="btn alt" href="/reports?kind=weekly&date=${date}">보고서 만들기</a>
   </form>
 </div>
-${sheetBox('prev', `<h2>전주 실적</h2>
-  <span class="count" data-count="prev">${data.grids[0].rows.length}건</span>${carry}`)}
-${sheetBox('plan', `<h2>금주 예정</h2>
-  <span class="count" data-count="plan">${data.grids[1].rows.length}건</span>`)}
+${sheetBox('prev', '전주 실적', carry)}
+${sheetBox('plan', '금주 예정')}
 ${SHEET_HELP}
 <noscript><p class="note err">이 화면은 자바스크립트가 켜져 있어야 씁니다.</p></noscript>
 ${jsonBlock('sheet-data', data)}
