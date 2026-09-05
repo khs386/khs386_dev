@@ -156,9 +156,9 @@ export function renderWeekly(data) {
     const cols = series
       .map(
         (s) =>
-          `\n<td style="text-align:center;vertical-align:bottom;padding:0 18px;width:${w}%;">\n` +
+          `\n<td style="text-align:center;vertical-align:bottom;padding:0 4px;width:${w}%;">\n` +
           `<p style="margin:0 0 6px;font-size:13px;font-weight:700;color:${s.color};">${s.progress}%</p>\n` +
-          `<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:${s.color};height:${barHeight(s.progress)}px;border-radius:8px 8px 0 0;min-height:4px;"></td></tr></table>\n` +
+          `<table width="50%" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="background:${s.color};height:${barHeight(s.progress)}px;border-radius:8px 8px 0 0;min-height:4px;"></td></tr></table>\n` +
           `<p style="margin:6px 0 0;font-size:12px;color:#555;word-break:keep-all;text-align:center;">${escapeHtml(s.name)}</p></td>`
       )
       .join('')
