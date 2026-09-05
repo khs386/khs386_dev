@@ -354,7 +354,7 @@ ${
     <button class="btn plain sm" form="save-${l.id}">저장</button>
     <form method="post" action="/daily/${l.id}/delete" class="inline">
       <input type="hidden" name="date" value="${date}">
-      <button class="btn danger sm">빼기</button></form>
+      <button class="btn danger sm">삭제</button></form>
   </div></div>
   <form id="save-${l.id}" method="post" action="/daily/${l.id}/save">
     <input type="hidden" name="date" value="${date}">
@@ -430,7 +430,7 @@ export function weeklyPage({ date, weekStart, items, tasks, workTypes, saved }) 
       <input name="title" value="${esc(it.title)}" style="max-width:360px;font-weight:600">
       <div class="row">${savedMark(saved === it.id)}${d === null ? '' : ddayTag(d)}
         <button class="btn plain sm">저장</button>
-        <button class="btn danger sm" form="del-${it.id}">빼기</button></div>
+        <button class="btn danger sm" form="del-${it.id}">삭제</button></div>
     </div>
     <div class="grid">
       ${optionalSelect('업무 유형', 'work_type', it.work_type, workTypes)}
@@ -447,7 +447,7 @@ export function weeklyPage({ date, weekStart, items, tasks, workTypes, saved }) 
       ${field('비고', 'note', it.note)}
     </div>
   </form>
-  <!-- 빼기 단추는 제목 줄에 있고, 폼은 저장 폼 밖에 둔다. 폼은 겹칠 수 없다. -->
+  <!-- 삭제 단추는 제목 줄에 있고, 폼은 저장 폼 밖에 둔다. 폼은 겹칠 수 없다. -->
   <form id="del-${it.id}" method="post" action="/weekly/${it.id}/delete">
     <input type="hidden" name="date" value="${date}">
   </form>

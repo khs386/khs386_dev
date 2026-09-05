@@ -218,7 +218,7 @@ app.post('/daily/:id/save', async (c) => {
 app.post('/daily/:id/delete', async (c) => {
   const form = await c.req.formData()
   await db.deleteLog(c.env.DB, c.req.param('id'))
-  return back(c, `/daily?date=${dateOr(form.get('date'), todayKST())}`, '뺐습니다.')
+  return back(c, `/daily?date=${dateOr(form.get('date'), todayKST())}`, '삭제했습니다.')
 })
 
 app.post('/daily/:id/move', async (c) => {
@@ -294,7 +294,7 @@ app.post('/weekly/:id/save', async (c) => {
 app.post('/weekly/:id/delete', async (c) => {
   const form = await c.req.formData()
   await db.deleteWeeklyItem(c.env.DB, c.req.param('id'))
-  return back(c, `/weekly?date=${dateOr(form.get('date'), todayKST())}`, '뺐습니다.')
+  return back(c, `/weekly?date=${dateOr(form.get('date'), todayKST())}`, '삭제했습니다.')
 })
 
 /** 지난 주 '금주 예정'을 이번 주 '전주 실적'으로 옮겨 온다. 이미 있는 항목은 건너뛴다. */
