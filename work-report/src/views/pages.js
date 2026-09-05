@@ -118,22 +118,22 @@ ${archived ? '' : form}
     <span class="count">${tasks.length}건</span></div>
   ${
     tasks.length
-      ? tasks.map((t) => `<div class="item">
-          <span class="t">${esc(t.title)}</span>
-          ${t.work_type ? tag(t.work_type) : ''}
-          ${pill(displayStatus(t.status), statusTint(t.status))}
-          ${pill(t.priority, priorityTint(t.priority))}
-          ${tag(t.progress === null ? '진행률 없음' : t.progress + '%')}
-          ${tag(t.deadline || '마감 없음')}
-          ${t.is_misc ? tag('기타') : ''}
-          <span class="spacer"></span>
-          <a class="btn ghost sm" href="/tasks?edit=${t.id}">수정</a>
-          <form method="post" action="/tasks/${t.id}/archive" class="inline">
-            <input type="hidden" name="archived" value="${t.archived ? '0' : '1'}">
-            <button class="btn ghost sm">${t.archived ? '복구' : '보관'}</button></form>
-          <form method="post" action="/tasks/${t.id}/delete" class="inline"
-                onsubmit="return confirm('이 업무와 일일업무 기록을 함께 지웁니다. 계속할까요?')">
-            <button class="btn danger sm">삭제</button></form>
+      ? tasks.map((t) => `<div class="item cols">
+          <span class="t">${esc(t.title)}${t.is_misc ? ' <span class="tag">기타</span>' : ''}</span>
+          <span class="c">${t.work_type ? tag(t.work_type) : ''}</span>
+          <span class="c">${pill(displayStatus(t.status), statusTint(t.status))}</span>
+          <span class="c">${pill(t.priority, priorityTint(t.priority))}</span>
+          <span class="c">${tag(t.progress === null ? '진행률 없음' : t.progress + '%')}</span>
+          <span class="c">${tag(t.deadline || '마감 없음')}</span>
+          <span class="acts">
+            <a class="btn ghost sm" href="/tasks?edit=${t.id}">수정</a>
+            <form method="post" action="/tasks/${t.id}/archive" class="inline">
+              <input type="hidden" name="archived" value="${t.archived ? '0' : '1'}">
+              <button class="btn ghost sm">${t.archived ? '복구' : '보관'}</button></form>
+            <form method="post" action="/tasks/${t.id}/delete" class="inline"
+                  onsubmit="return confirm('이 업무와 일일업무 기록을 함께 지웁니다. 계속할까요?')">
+              <button class="btn danger sm">삭제</button></form>
+          </span>
         </div>`).join('')
       : '<p class="empty">업무가 없습니다.</p>'
   }

@@ -145,6 +145,21 @@ nav.top .right{margin-left:auto}
 .item:first-child{border-top:0; padding-top:2px}
 .item .t{font-weight:500; flex:1 1 200px; min-width:0}
 
+/* 업무 목록 — 딱지 너비가 제각각이라 줄마다 어긋나 보인다. 칸을 정해 세로로 맞춘다.
+   딱지는 칸을 꽉 채우고 글자를 가운데 놓아, 줄이 바뀌어도 자리가 흔들리지 않는다. */
+.item.cols{display:grid; align-items:center;
+  grid-template-columns:minmax(0,1fr) 152px 52px 52px 92px 104px auto}
+.item.cols .t{flex:none; min-width:0; word-break:keep-all}
+.item.cols .c{min-width:0; display:block}
+.item.cols .c>.tag,.item.cols .c>.pill{display:block; text-align:center;
+  overflow:hidden; text-overflow:ellipsis; padding-left:4px; padding-right:4px}
+.item.cols .acts{display:flex; gap:8px; align-items:center; justify-content:flex-end}
+@media (max-width:840px){
+  .item.cols{display:flex}
+  .item.cols .c{display:contents}
+  .item.cols .acts{margin-left:auto}
+}
+
 .pill{font-size:12px; font-weight:500; padding:2px 9px; border-radius:20px;
   color:#fff; white-space:nowrap; letter-spacing:0}
 .tag{font-size:12px; padding:2px 9px; border-radius:20px; background:var(--fill);
