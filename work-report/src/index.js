@@ -529,14 +529,21 @@ app.get('/brief', async (c) => {
  * 안에서 열리려 하는데, 그 사이트들은 남의 액자에 담기는 것을 거부해서 "연결을
  * 거부했습니다"만 뜬다. 새 탭에서 열리게 하면 정상으로 열린다.
  */
-function openLinksInNewTab(html) {
+function prepareBriefHtml(html) {
   const base =
     '<base target="_blank">' +
     // [리마인드 초안 잡기] 버튼은 파란 바탕인데, 만드는 쪽에서 글자색을 빠뜨리면
     // 브라우저 기본색(검정)과 밑줄이 나와 읽히지 않는다. 그 링크 주소는 늘 같으니
     // 주소로 집어서 바로잡는다. 어떻게 꾸며져 있든 이 한 곳만 손댄다.
     '<style>a[href^="https://claude.ai/new"]' +
-    '{color:#ffffff !important;text-decoration:none !important}</style>'
+    '{color:#ffffff !important;text-decoration:none !important}</style>' +
+    // 액자 안에서도 스크롤이 생기면 세로 막대가 둘이 된다. 문서가 자기 높이를
+    // 알려 주면 바깥에서 액자를 그만큼 늘려, 페이지 스크롤 하나만 남는다.
+    '<script>(function(){function s(){try{parent.postMessage({briefHeight:' +
+    'Math.max(document.documentElement.scrollHeight,(document.body||{}).scrollHeight||0)' +
+    '},"*")}catch(e){}}addEventListener("load",s);addEventListener("resize",s);' +
+    'if(window.ResizeObserver)new ResizeObserver(s).observe(document.documentElement);' +
+    'setTimeout(s,300);setTimeout(s,1200)})()<\/script>'
   const head = /<head[^>]*>/i.exec(html)
   if (head) return html.slice(0, head.index + head[0].length) + base + html.slice(head.index + head[0].length)
   return base + html
@@ -547,7 +554,7 @@ function openLinksInNewTab(html) {
 app.get('/brief/raw', async (c) => {
   const brief = await db.getBrief(c.env.DB, dateOr(c.req.query('date'), todayKST()))
   if (!brief) return c.notFound()
-  return new Response(openLinksInNewTab(brief.html), {
+  return new Response(prepareBriefHtml(brief.html), {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',

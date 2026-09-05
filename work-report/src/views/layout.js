@@ -226,8 +226,8 @@ nav.top .right{margin-left:auto}
   font-size:20px; line-height:1; color:var(--text-3)}
 .bnum li.more{color:var(--text-3)}
 .bnum li.more::before{content:''}
-iframe.brief{width:100%; height:82vh; min-height:540px; border:0;
-  background:#fff; display:block}
+iframe.brief{width:100%; height:70vh; min-height:420px; border:0;
+  background:#fff; display:block; overflow:hidden}
 iframe.preview{width:100%; height:640px; border:1px solid var(--sep-soft);
   border-radius:var(--r); background:#fff}
 

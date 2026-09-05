@@ -213,6 +213,7 @@ export function briefPage({ date, brief, history, today }) {
   </form>
   ${brief ? `<span class="count">${kstTime(brief.created_at)} 도착</span>` : ''}
   <span class="spacer"></span>
+  <a class="btn" href="/">돌아가기</a>
   ${brief ? `<a class="btn ghost" href="/brief/raw?date=${date}"
      target="_blank" rel="noreferrer">새 탭에서 크게 보기</a>` : ''}
 </div>
@@ -222,7 +223,17 @@ ${
     ? `<div class="card" style="padding:0;overflow:hidden">
         <iframe class="brief" title="모닝브리프" src="/brief/raw?date=${date}"
                 sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"></iframe>
-      </div>`
+      </div>
+      <script>
+      // 브리프가 자기 높이를 알려 오면 액자를 그만큼 늘린다. 그래야 세로 막대가
+      // 페이지 하나만 남는다. 액자 안에서 온 말인지 보낸 창으로 확인한다.
+      addEventListener('message', function (e) {
+        var f = document.querySelector('iframe.brief')
+        if (!f || e.source !== f.contentWindow) return
+        var h = e.data && e.data.briefHeight
+        if (typeof h === 'number' && h > 200 && h < 40000) f.style.height = h + 'px'
+      })
+      <\/script>`
     : `<p class="empty">${koreanDate(date)} 브리프가 없습니다.
         아침마다 클라우드의 Claude가 만들어 보냅니다.</p>`
 }
