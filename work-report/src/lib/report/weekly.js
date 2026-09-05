@@ -27,17 +27,18 @@ function statusBadge(s) {
   return `<span style="background:${c};color:#fff;font-size:12px;padding:4px 10px;border-radius:8px;white-space:nowrap;">${escapeHtml(displayStatus(s))}</span>`
 }
 
-function th(label, align) {
-  return `<th style="padding:14px 12px;font-size:14px;color:#fff;font-weight:700;white-space:nowrap;text-align:${align};">${label}</th>`
+/** 업무명 칸은 왼쪽 여백이 더 넓다. 머리글도 같은 자리에서 시작해야 줄이 맞는다. */
+function th(label, align, padLeft = 12) {
+  return `<th style="padding:14px 12px 14px ${padLeft}px;font-size:14px;color:#fff;font-weight:700;white-space:nowrap;text-align:${align};">${label}</th>`
 }
 
 /** 전주 실적 표 (teal 헤더, 짝수 행 #daf0ec) */
 function prevTable(rows) {
   let html =
     '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:10px;overflow:hidden;margin-bottom:28px;table-layout:fixed;">\n' +
-    '<colgroup><col style="width:15%;"><col style="width:40%;"><col style="width:13%;"><col style="width:32%;"></colgroup>\n' +
+    '<colgroup><col style="width:22%;"><col style="width:38%;"><col style="width:13%;"><col style="width:27%;"></colgroup>\n' +
     '<tr style="background:#0a7c6e;">' +
-    th('업무 유형', 'left') + th('업무명', 'left') + th('진행 상태', 'center') + th('비고 / 산출물', 'left') +
+    th('업무 유형', 'left') + th('업무명', 'left', 20) + th('진행 상태', 'center') + th('비고 / 산출물', 'left') +
     '</tr>'
   rows.forEach((r, i) => {
     const bg = i % 2 === 0 ? '#daf0ec' : '#ffffff'
@@ -45,7 +46,7 @@ function prevTable(rows) {
     html +=
       `\n<tr style="background:${bg};border-bottom:1px solid #eee;">\n` +
       `  <td style="padding:13px 12px;">${typeBadge(r.workType)}</td>\n` +
-      `  <td style="padding:13px 12px;font-size:14px;font-weight:600;color:#1a1a2e;">${escapeHtml(r.title)}</td>\n` +
+      `  <td style="padding:13px 12px 13px 20px;font-size:14px;font-weight:600;color:#1a1a2e;">${escapeHtml(r.title)}</td>\n` +
       `  <td style="padding:13px 12px;text-align:center;">${statusBadge(r.status)}</td>\n` +
       `  <td style="padding:13px 12px;font-size:13px;color:#888;">${escapeHtml(note)}</td>\n` +
       `</tr>`
@@ -57,9 +58,9 @@ function prevTable(rows) {
 function planTable(rows) {
   let html =
     '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:10px;overflow:hidden;margin-bottom:28px;table-layout:fixed;">\n' +
-    '<colgroup><col style="width:15%;"><col style="width:43%;"><col style="width:13%;"><col style="width:29%;"></colgroup>\n' +
+    '<colgroup><col style="width:22%;"><col style="width:41%;"><col style="width:13%;"><col style="width:24%;"></colgroup>\n' +
     '<tr style="background:#6b5bb8;">' +
-    th('업무 유형', 'left') + th('업무명', 'left') + th('종결 예정일', 'center') + th('비고', 'left') +
+    th('업무 유형', 'left') + th('업무명', 'left', 20) + th('종결 예정일', 'center') + th('비고', 'left') +
     '</tr>'
   rows.forEach((r, i) => {
     const bg = i % 2 === 0 ? '#e4dff5' : '#ffffff'
@@ -67,7 +68,7 @@ function planTable(rows) {
     html +=
       `\n<tr style="background:${bg};border-bottom:1px solid #eee;">\n` +
       `  <td style="padding:13px 12px;">${typeBadge(r.workType)}</td>\n` +
-      `  <td style="padding:13px 12px;font-size:14px;font-weight:600;color:#1a1a2e;">${escapeHtml(r.title)}</td>\n` +
+      `  <td style="padding:13px 12px 13px 20px;font-size:14px;font-weight:600;color:#1a1a2e;">${escapeHtml(r.title)}</td>\n` +
       `  <td style="padding:13px 12px;font-size:13px;text-align:center;color:#555;white-space:nowrap;">${due || '-'}</td>\n` +
       `  <td style="padding:13px 12px;font-size:13px;color:#888;">${escapeHtml(r.note || '')}</td>\n` +
       `</tr>`
