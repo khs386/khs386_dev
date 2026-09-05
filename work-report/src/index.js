@@ -107,10 +107,11 @@ function taskForm(form) {
 
 app.get('/tasks', async (c) => {
   const archived = c.req.query('archived') === '1'
-  const [tasks, series, workTypes] = await Promise.all([
+  const [tasks, series, workTypes, archivedList] = await Promise.all([
     db.listTasks(c.env.DB, { archived }),
     db.listSeries(c.env.DB),
     db.listWorkTypes(c.env.DB),
+    archived ? Promise.resolve([]) : db.listTasks(c.env.DB, { archived: true }),
   ])
   const editId = c.req.query('edit')
   return html(c, tasksPage({
@@ -118,6 +119,7 @@ app.get('/tasks', async (c) => {
     // 시리즈와 업무 유형은 화면에서 관리하는 목록을 그대로 쓴다
     seriesNames: series.map((s) => s.name),
     workTypes: workTypes.map((t) => t.name),
+    archivedCount: archivedList.length,
     editing: editId ? await db.getTask(c.env.DB, editId) : null,
     msg: c.req.query('msg'),
   }))
@@ -137,8 +139,17 @@ app.post('/tasks/:id/save', async (c) => {
 
 app.post('/tasks/:id/archive', async (c) => {
   const form = await c.req.formData()
-  await db.setTaskArchived(c.env.DB, c.req.param('id'), form.get('archived') === '1')
-  return back(c, '/tasks', '옮겼습니다.')
+  const id = c.req.param('id')
+  const toArchive = form.get('archived') === '1'
+  const task = await db.getTask(c.env.DB, id)
+  await db.setTaskArchived(c.env.DB, id, toArchive)
+  // 어디로 갔는지 알 수 있게 이름과 행선지를 함께 알려 준다
+  const name = task ? `"${task.title}"을(를) ` : ''
+  return back(
+    c,
+    toArchive ? '/tasks' : '/tasks?archived=1',
+    toArchive ? `${name}보관함으로 옮겼습니다.` : `${name}진행 중 목록으로 되돌렸습니다.`
+  )
 })
 
 app.post('/tasks/:id/delete', async (c) => {

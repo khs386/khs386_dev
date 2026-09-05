@@ -75,7 +75,7 @@ ${stale.length ? notice('시리즈 진행률이 아직 입력되지 않았습니
 
 /* ── 업무 ───────────────────────────────────────────────── */
 
-export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, msg }) {
+export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, archivedCount, msg }) {
   const f = editing || {
     title: '', series: seriesNames[0] || '', work_type: workTypes[0] || '',
     priority: '중간', status: '진행', progress: '', deadline: '', is_misc: false,
@@ -108,7 +108,7 @@ export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, ms
 <div class="head">
   <div><h1>단위 업무</h1><p>보고서에 들어가는 업무 목록입니다. 여기서 상태와 진행률을 관리합니다.</p></div>
   <a class="btn ghost sm" href="/tasks${archived ? '' : '?archived=1'}">
-    ${archived ? '진행 중 목록 보기' : '보관함 보기'}</a>
+    ${archived ? '진행 중 목록 보기' : `보관함 보기${archivedCount ? ` (${archivedCount})` : ''}`}</a>
 </div>
 ${notice(msg)}
 ${archived ? '' : form}
