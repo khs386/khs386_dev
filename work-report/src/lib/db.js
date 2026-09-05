@@ -374,33 +374,47 @@ export async function listWorkTypes(db) {
   return results || []
 }
 
-export async function createWorkType(db, name) {
+export async function createWorkType(db, name, series) {
   const clean = String(name || '').trim()
   if (!clean) return { error: '업무 유형 이름을 입력해 주세요.' }
   const dup = await db.prepare('select name from work_types where name = ?').bind(clean).first()
   if (dup) return { error: `"${clean}" 은(는) 이미 있습니다.` }
   const last = await db.prepare('select max(sort_order) as m from work_types').first()
   await db
-    .prepare('insert into work_types (name, sort_order) values (?, ?)')
-    .bind(clean, (last?.m || 0) + 1)
+    .prepare('insert into work_types (name, sort_order, series) values (?, ?, ?)')
+    .bind(clean, (last?.m || 0) + 1, str(series))
     .run()
   return { ok: true, name: clean }
 }
 
-/** 이름을 바꾸면 그 유형을 쓰던 업무와 주간 항목도 함께 따라간다. */
-export async function renameWorkTypes(db, pairs) {
-  const changed = []
-  for (const { from, to } of pairs) {
+/**
+ * 업무 유형의 이름과 시리즈를 한꺼번에 고친다.
+ *
+ * 이름을 바꾸면 그 유형을 쓰던 업무와 주간 항목도 함께 따라간다.
+ * 시리즈를 비워 두면 공통 유형 — 어느 시리즈에서나 고를 수 있다.
+ */
+export async function saveWorkTypes(db, rows) {
+  let changed = 0
+  for (const { from, to, series } of rows) {
     const next = String(to || '').trim()
-    if (!next || next === from) continue
-    const dup = await db.prepare('select name from work_types where name = ?').bind(next).first()
-    if (dup) return { error: `"${next}" 은(는) 이미 있습니다.` }
-    await db.batch([
-      db.prepare('update work_types set name = ? where name = ?').bind(next, from),
-      db.prepare('update tasks set work_type = ? where work_type = ?').bind(next, from),
-      db.prepare('update weekly_items set work_type = ? where work_type = ?').bind(next, from),
-    ])
-    changed.push(next)
+    if (!next) continue
+    const nextSeries = str(series)
+    const cur = await db.prepare('select * from work_types where name = ?').bind(from).first()
+    if (!cur) continue
+    if (next !== from) {
+      const dup = await db.prepare('select name from work_types where name = ?').bind(next).first()
+      if (dup) return { error: `"${next}" 은(는) 이미 있습니다.` }
+      await db.batch([
+        db.prepare('update work_types set name = ? where name = ?').bind(next, from),
+        db.prepare('update tasks set work_type = ? where work_type = ?').bind(next, from),
+        db.prepare('update weekly_items set work_type = ? where work_type = ?').bind(next, from),
+      ])
+      changed += 1
+    }
+    if ((cur.series || null) !== nextSeries) {
+      await db.prepare('update work_types set series = ? where name = ?').bind(nextSeries, next).run()
+      if (next === from) changed += 1
+    }
   }
   return { ok: true, changed }
 }

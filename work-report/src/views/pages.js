@@ -83,8 +83,20 @@ ${briefCard(brief, today)}
 /* ── 업무 ───────────────────────────────────────────────── */
 
 export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, archivedCount }) {
+  // 업무 유형은 시리즈를 따라간다. 그 시리즈에 매인 유형과 공통 유형만 고를 수 있다.
+  const forSeries = (name, keep) => {
+    const list = workTypes.filter((t) => !t.series || t.series === name)
+    // 이미 어긋나게 저장된 업무를 수정할 때, 지금 값이 목록에서 사라지면
+    // 무엇이 들어 있었는지 알 수 없다. 그 값만 남겨 둔다.
+    if (keep && !list.some((t) => t.name === keep)) {
+      const cur = workTypes.find((t) => t.name === keep)
+      if (cur) list.push(cur)
+    }
+    return list
+  }
   const f = editing || {
-    title: '', series: seriesNames[0] || '', work_type: workTypes[0] || '',
+    title: '', series: seriesNames[0] || '',
+    work_type: (forSeries(seriesNames[0] || '')[0] || {}).name || '',
     priority: '중간', status: '진행', progress: '', deadline: '', is_misc: false,
   }
   const form = `
@@ -102,14 +114,36 @@ export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, ar
     </div>
     <div class="grid one-line">
       ${optionalSelect('시리즈', 'series', f.series, seriesNames)}
-      ${optionalSelect('업무 유형', 'work_type', f.work_type, workTypes)}
+      ${optionalSelect('업무 유형', 'work_type', f.work_type, forSeries(f.series, f.work_type).map((t) => t.name))}
       ${field('진행 상태', 'status', f.status, { options: STATUSES })}
       ${field('우선순위', 'priority', f.priority, { options: PRIORITIES })}
       ${field('진행률 (%)', 'progress', f.progress, { type: 'number', min: 0, max: 100 })}
       ${field('마감 시한', 'deadline', f.deadline, { type: 'date' })}
     </div>
   </form>
-</div>`
+</div>
+<script>
+// 시리즈를 바꾸면 업무 유형 목록을 그 시리즈 것으로 다시 그린다. 서버도 같은
+// 규칙으로 한 번 더 본다 — 이 스크립트가 돌지 않아도 어긋난 짝은 저장되지 않는다.
+;(function () {
+  var ALL = ${JSON.stringify(workTypes.map((t) => ({ n: t.name, s: t.series || '' })))}
+  var form = document.querySelector('form[action$="/tasks/new"], form[action*="/tasks/"][action$="/save"]')
+  if (!form) return
+  var series = form.querySelector('select[name=series]')
+  var type = form.querySelector('select[name=work_type]')
+  if (!series || !type) return
+  series.addEventListener('change', function () {
+    var keep = type.value
+    var list = ALL.filter(function (t) { return !t.s || t.s === series.value })
+    type.innerHTML = '<option value="">선택 안 함</option>' +
+      list.map(function (t) {
+        return '<option' + (t.n === keep ? ' selected' : '') + '>' +
+          t.n.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</option>'
+      }).join('')
+    if (type.value !== keep) type.selectedIndex = list.length ? 1 : 0
+  })
+})()
+<\/script>`
 
   const body = `
 <div class="head">
@@ -145,7 +179,7 @@ ${archived ? '' : form}
       : '<p class="empty">업무가 없습니다.</p>'
   }
 </div>
-${archived ? '' : workTypeCard(workTypes)}`
+${archived ? '' : workTypeCard(workTypes, seriesNames)}`
   return page({ title: '단위업무', path: '/tasks', body })
 }
 
@@ -266,7 +300,16 @@ ${
 }
 
 /** 업무 유형 관리. 이름을 바꾸면 그 유형을 쓰던 업무도 함께 따라간다. */
-function workTypeCard(workTypes) {
+/** 유형이 속한 시리즈를 고르는 상자. 비워 두면 어느 시리즈에서나 고를 수 있다. */
+const seriesPick = (value, seriesNames, label) =>
+  `<select name="series" class="wtseries" aria-label="${esc(label)}의 시리즈">` +
+  `<option value=""${value ? '' : ' selected'}>공통 (모든 시리즈)</option>` +
+  seriesNames
+    .map((n) => `<option${n === value ? ' selected' : ''}>${esc(n)}</option>`)
+    .join('') +
+  `</select>`
+
+function workTypeCard(workTypes, seriesNames) {
   return `
 <div class="card">
   <div class="chead"><h2>업무 유형 관리</h2>
@@ -276,17 +319,18 @@ function workTypeCard(workTypes) {
       ? `<form method="post" action="/work-types">
     ${workTypes.map((t, i) => `
     <div class="item">
-      <input type="hidden" name="from" value="${esc(t)}">
-      <input name="to" value="${esc(t)}" class="wtname" aria-label="업무 유형 이름">
+      <input type="hidden" name="from" value="${esc(t.name)}">
+      <input name="to" value="${esc(t.name)}" class="wtname" aria-label="업무 유형 이름">
+      ${seriesPick(t.series || '', seriesNames, t.name)}
       <span class="spacer"></span>
-      <button class="btn ghost sm" formaction="/work-types/move" name="move" value="${esc(t)}:-1"
+      <button class="btn ghost sm" formaction="/work-types/move" name="move" value="${esc(t.name)}:-1"
               formnovalidate${i === 0 ? ' disabled' : ''}>↑</button>
-      <button class="btn ghost sm" formaction="/work-types/move" name="move" value="${esc(t)}:1"
+      <button class="btn ghost sm" formaction="/work-types/move" name="move" value="${esc(t.name)}:1"
               formnovalidate${i === workTypes.length - 1 ? ' disabled' : ''}>↓</button>
       <button class="btn plain sm">수정</button>
-      <button class="btn danger sm" formaction="/work-types/delete" name="remove" value="${esc(t)}"
+      <button class="btn danger sm" formaction="/work-types/delete" name="remove" value="${esc(t.name)}"
               formnovalidate
-              onclick="return confirm('${esc(t)} 을(를) 지울까요? 이 유형을 쓰던 업무는 유형이 비워집니다.')">삭제</button>
+              onclick="return confirm('${esc(t.name)} 을(를) 지울까요? 이 유형을 쓰던 업무는 유형이 비워집니다.')">삭제</button>
     </div>`).join('')}
   </form>`
       : '<p class="empty">업무 유형이 없습니다. 아래에서 추가하세요.</p>'
@@ -295,6 +339,7 @@ function workTypeCard(workTypes) {
     <span class="lbl">새 업무 유형 추가</span>
     <form method="post" action="/work-types/new" class="row">
       <input name="name" class="wtname" placeholder="예: 세이펜 제작" required>
+      ${seriesPick('', seriesNames, '새 업무 유형')}
       <button class="btn ghost">추가</button>
     </form>
   </div>
@@ -404,6 +449,14 @@ document.addEventListener('click', function (e) {
 /* ── 주간업무 ──────────────────────────────────────────── */
 
 export function weeklyPage({ date, weekStart, items, tasks, workTypes, saved }) {
+  // 단위업무에서 넣은 항목은 그 업무의 시리즈를 따른다. 직접 적어 넣은 항목은
+  // 딸린 시리즈가 없으니 전체 목록에서 고른다.
+  const seriesOf = new Map(tasks.map((t) => [t.id, t.series || '']))
+  const typesFor = (taskId) => {
+    const name = taskId ? seriesOf.get(taskId) : undefined
+    return (name === undefined ? workTypes : workTypes.filter((t) => !t.series || t.series === name))
+      .map((t) => t.name)
+  }
   const byKind = (k) => items.filter((i) => i.kind === k)
 
   const addForm = (kind) => `
@@ -435,7 +488,7 @@ export function weeklyPage({ date, weekStart, items, tasks, workTypes, saved }) 
         <button class="btn danger sm" form="del-${it.id}">삭제</button></div>
     </div>
     <div class="grid">
-      ${optionalSelect('업무 유형', 'work_type', it.work_type, workTypes)}
+      ${optionalSelect('업무 유형', 'work_type', it.work_type, typesFor(it.task_id))}
       ${
         kind === '전주 실적'
           ? optionalSelect('진행 상태', 'status', it.status, [...STATUSES, '종결']) +

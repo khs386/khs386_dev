@@ -119,6 +119,8 @@ nav.top .right{margin-left:auto}
 .grow{flex:1 1 200px}
 /* 업무 유형 이름 칸. 화면 폭을 다 쓰면 버튼이 멀어져 읽기 나쁘다. */
 .wtname{flex:0 1 320px; max-width:320px}
+/* 유형이 속한 시리즈. 이름 칸 옆에 나란히 둔다. */
+.wtseries{flex:0 0 auto; width:190px}
 /* 새로 추가하는 자리는 위의 목록과 눈에 띄게 갈라 놓는다. */
 .addrow{margin-top:20px; padding-top:16px; border-top:1px solid var(--sep)}
 .addrow .lbl{display:block; font-size:12px; color:var(--text-3); margin-bottom:8px}

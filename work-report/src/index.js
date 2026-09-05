@@ -117,22 +117,42 @@ app.get('/tasks', async (c) => {
     tasks, archived,
     // 시리즈와 업무 유형은 화면에서 관리하는 목록을 그대로 쓴다
     seriesNames: series.map((s) => s.name),
-    workTypes: workTypes.map((t) => t.name),
+    workTypes,
     archivedCount: archivedList.length,
     editing: editId ? await db.getTask(c.env.DB, editId) : null,
   }))
 })
 
+/**
+ * 업무 유형은 시리즈를 따라간다. 화면에서 걸러 주지만 여기서 한 번 더 본다.
+ *
+ * 고른 유형이 다른 시리즈에 매여 있으면 그 시리즈의 유형으로 바꿔 놓고, 무엇을
+ * 어떻게 바꿨는지 알려 준다. 되돌려 보내면 적어 둔 것이 다 날아가므로 막지 않는다.
+ * 시리즈가 없는 공통 유형은 어디서나 그대로 둔다.
+ */
+async function fitWorkType(env, f) {
+  const types = await db.listWorkTypes(env.DB)
+  const cur = types.find((t) => t.name === f.work_type)
+  if (!f.work_type || !cur || !cur.series || cur.series === f.series) return ''
+  const fit = types.find((t) => t.series === f.series) || types.find((t) => !t.series)
+  const before = f.work_type
+  f.work_type = fit ? fit.name : ''
+  return ` 업무 유형은 시리즈에 맞춰 "${before}" → "${f.work_type || '선택 안 함'}"으로 바꿨습니다.`
+}
+
 app.post('/tasks/new', async (c) => {
   const f = taskForm(await c.req.formData())
   if (!f.title.trim()) return back(c, '/tasks', '업무명을 입력해 주세요.')
+  const fixed = await fitWorkType(c.env, f)
   await db.createTask(c.env.DB, f)
-  return back(c, '/tasks', '추가했습니다.')
+  return back(c, '/tasks', '추가했습니다.' + fixed)
 })
 
 app.post('/tasks/:id/save', async (c) => {
-  await db.updateTask(c.env.DB, c.req.param('id'), taskForm(await c.req.formData()))
-  return back(c, '/tasks', '수정했습니다.')
+  const f = taskForm(await c.req.formData())
+  const fixed = await fitWorkType(c.env, f)
+  await db.updateTask(c.env.DB, c.req.param('id'), f)
+  return back(c, '/tasks', '수정했습니다.' + fixed)
 })
 
 app.post('/tasks/:id/archive', async (c) => {
@@ -239,7 +259,7 @@ app.get('/weekly', async (c) => {
   ])
   return html(c, weeklyPage({
     date, weekStart: ws, items, tasks,
-    workTypes: workTypes.map((t) => t.name),
+    workTypes,
     saved: c.req.query('saved'),
   }))
 })
@@ -268,7 +288,9 @@ app.post('/weekly/add-free', async (c) => {
   if (!title) return back(c, `/weekly?date=${date}`, '업무명을 입력해 주세요.')
   const items = await db.listWeekly(c.env.DB, weekStart(date))
   await db.addWeeklyItem(c.env.DB, weekStart(date), kind, {
-    title, work_type: '꼬마시리즈 개발',
+    // 직접 적어 넣은 항목은 딸린 단위업무가 없어 시리즈를 알 수 없다.
+    // 유형은 비워 두고 화면에서 고르게 한다.
+    title, work_type: '',
     status: kind === '전주 실적' ? '진행' : null,
     progress: null, due_date: null,
   }, items.filter((i) => i.kind === kind).length)
@@ -332,17 +354,18 @@ app.post('/work-types', async (c) => {
   const form = await c.req.formData()
   const froms = form.getAll('from')
   const tos = form.getAll('to')
-  const { error, changed } = await db.renameWorkTypes(
+  const series = form.getAll('series')
+  const { error, changed } = await db.saveWorkTypes(
     c.env.DB,
-    froms.map((from, i) => ({ from, to: tos[i] }))
+    froms.map((from, i) => ({ from, to: tos[i], series: series[i] }))
   )
   if (error) return back(c, '/tasks', error)
-  return back(c, '/tasks', changed.length ? `${changed.length}개 이름을 바꿨습니다.` : '바뀐 이름이 없습니다.')
+  return back(c, '/tasks', changed ? `${changed}개를 고쳤습니다.` : '바뀐 것이 없습니다.')
 })
 
 app.post('/work-types/new', async (c) => {
   const form = await c.req.formData()
-  const { error, name } = await db.createWorkType(c.env.DB, form.get('name'))
+  const { error, name } = await db.createWorkType(c.env.DB, form.get('name'), form.get('series'))
   return back(c, '/tasks', error || `"${name}"을(를) 추가했습니다.`)
 })
 
