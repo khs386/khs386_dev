@@ -79,16 +79,42 @@ export async function listLogs(db, date) {
   return (results || []).map(rowLog)
 }
 
+/**
+ * 그 업무를 마지막으로 적은 날의 기록. 없으면 null.
+ * 오늘 것은 보지 않는다 — 오늘 넣는 줄의 바탕이 될 값을 찾는 것이다.
+ */
+export async function lastLogForTask(db, taskId, before) {
+  if (!taskId) return null
+  return await db
+    .prepare(
+      `select * from daily_logs where task_id = ? and log_date < ?
+       order by log_date desc, created_at desc limit 1`
+    )
+    .bind(taskId, before)
+    .first()
+}
+
+/**
+ * 목록에서 고른 업무를 그 날짜에 넣는다.
+ *
+ * 같은 업무를 이어서 적는 날이 많다. 어제 적어 둔 상태·진행률·세부내용을 오늘
+ * 다시 처음부터 채우게 하지 않고, 마지막으로 적은 날의 값을 그대로 가져와
+ * 바탕으로 삼는다. 처음 넣는 업무면 단위업무에 적힌 값을 쓴다.
+ */
 export async function addLogFromTask(db, date, task, order) {
+  const prev = await lastLogForTask(db, task.id, date)
+  const src = prev || task
   await db
     .prepare(
       `insert into daily_logs
         (id, log_date, task_id, title, detail_lines, status, priority, progress, deadline, is_misc, sort_order)
-       values (?, ?, ?, ?, '[]', ?, ?, ?, ?, ?, ?)`
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .bind(uuid(), date, task.id, task.title, task.status, task.priority,
-          task.progress, task.deadline, bool(task.is_misc), order)
+    .bind(uuid(), date, task.id, task.title,
+          prev ? prev.detail_lines : '[]',
+          src.status, src.priority, src.progress, src.deadline, bool(src.is_misc), order)
     .run()
+  return { carried: !!prev }
 }
 
 export async function addLogFree(db, date, title, order) {

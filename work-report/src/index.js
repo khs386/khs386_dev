@@ -180,8 +180,12 @@ app.post('/daily/add', async (c) => {
   const task = await db.getTask(c.env.DB, form.get('task_id'))
   if (!task) return back(c, `/daily?date=${date}`, '업무를 고르지 않았습니다.')
   const logs = await db.listLogs(c.env.DB, date)
-  await db.addLogFromTask(c.env.DB, date, task, logs.length)
-  return back(c, `/daily?date=${date}`, `"${task.title}"을(를) 넣었습니다.`)
+  const { carried } = await db.addLogFromTask(c.env.DB, date, task, logs.length)
+  return back(
+    c,
+    `/daily?date=${date}`,
+    `"${task.title}"을(를) 넣었습니다.` + (carried ? ' 직전 기록을 가져왔습니다.' : '')
+  )
 })
 
 app.post('/daily/add-free', async (c) => {
