@@ -170,6 +170,10 @@ nav.top .right{margin-left:auto}
 .item.cols .c>.tag,.item.cols .c>.pill{display:block; text-align:center;
   overflow:hidden; text-overflow:ellipsis; padding-left:4px; padding-right:4px}
 .item.cols .acts{display:flex; gap:8px; align-items:center; justify-content:flex-end}
+/* 데일리 브리프의 두 목록. 오른쪽 딱지 수가 달라 칸 너비만 따로 정한다. */
+.item.cols.mine{grid-template-columns:minmax(0,1fr) 60px 88px 52px}
+.item.cols.due{grid-template-columns:minmax(0,1fr) 104px 52px}
+.item.cols .c>.dday{display:block; text-align:center}
 @media (max-width:840px){
   .item.cols{display:flex}
   .item.cols .c{display:contents}

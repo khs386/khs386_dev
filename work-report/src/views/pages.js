@@ -46,11 +46,11 @@ ${briefCard(brief, today)}
   <div class="chead"><h2>오늘 기록한 업무</h2><span class="count">${logs.length}건</span></div>
   ${
     logs.length
-      ? logs.map((l) => `<div class="item">
+      ? logs.map((l) => `<div class="item cols mine">
           <span class="t">${esc(l.title)}</span>
-          ${pill(displayStatus(l.status), statusTint(l.status))}
-          ${tag(l.progress === null ? '진행률 없음' : l.progress + '%')}
-          ${ddayTag(dday(l.deadline, today))}
+          <span class="c">${pill(displayStatus(l.status), statusTint(l.status))}</span>
+          <span class="c">${tag(l.progress === null ? '진행률 없음' : l.progress + '%')}</span>
+          <span class="c">${ddayTag(dday(l.deadline, today))}</span>
         </div>`).join('')
       : `<p class="empty">아직 기록이 없습니다. <a href="/daily">일일업무</a>에서 오늘 진행한 업무를 넣으세요.</p>`
   }
@@ -69,9 +69,10 @@ ${briefCard(brief, today)}
     soon.length
       ? soon.map((t) => {
           const d = dday(t.deadline, today)
-          return `<div class="item"><span class="t">${esc(t.title)}</span>
-            ${tag(t.deadline)}
-            <span class="pill" style="background:${ddayTint(d)}">D-${d}</span></div>`
+          return `<div class="item cols due"><span class="t">${esc(t.title)}</span>
+            <span class="c">${tag(t.deadline)}</span>
+            <span class="c"><span class="pill"
+              style="background:${ddayTint(d)}">D-${d}</span></span></div>`
         }).join('')
       : '<p class="empty">마감이 정해진 업무가 없습니다.</p>'
   }
