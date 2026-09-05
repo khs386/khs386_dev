@@ -268,23 +268,27 @@ function workTypeCard(workTypes) {
     ${workTypes.map((t, i) => `
     <div class="item">
       <input type="hidden" name="from" value="${esc(t)}">
-      <input name="to" value="${esc(t)}" class="grow" aria-label="업무 유형 이름">
+      <input name="to" value="${esc(t)}" class="wtname" aria-label="업무 유형 이름">
+      <span class="spacer"></span>
       <button class="btn ghost sm" formaction="/work-types/move" name="move" value="${esc(t)}:-1"
               formnovalidate${i === 0 ? ' disabled' : ''}>↑</button>
       <button class="btn ghost sm" formaction="/work-types/move" name="move" value="${esc(t)}:1"
               formnovalidate${i === workTypes.length - 1 ? ' disabled' : ''}>↓</button>
+      <button class="btn plain sm">수정</button>
       <button class="btn danger sm" formaction="/work-types/delete" name="remove" value="${esc(t)}"
               formnovalidate
               onclick="return confirm('${esc(t)} 을(를) 지울까요? 이 유형을 쓰던 업무는 유형이 비워집니다.')">삭제</button>
     </div>`).join('')}
-    <div class="row" style="margin-top:16px"><button class="btn">이름 저장</button></div>
   </form>`
       : '<p class="empty">업무 유형이 없습니다. 아래에서 추가하세요.</p>'
   }
-  <form method="post" action="/work-types/new" class="row" style="margin-top:16px">
-    <input name="name" class="grow" placeholder="새 업무 유형 (예: 세이펜 제작)" required>
-    <button class="btn ghost">추가</button>
-  </form>
+  <div class="addrow">
+    <span class="lbl">새 업무 유형 추가</span>
+    <form method="post" action="/work-types/new" class="row">
+      <input name="name" class="wtname" placeholder="예: 세이펜 제작" required>
+      <button class="btn ghost">추가</button>
+    </form>
+  </div>
 </div>`
 }
 

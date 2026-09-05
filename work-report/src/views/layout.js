@@ -115,6 +115,11 @@ nav.top .right{margin-left:auto}
 .chk input{width:auto; flex:none}
 .row>*{flex:0 0 auto}
 .grow{flex:1 1 200px}
+/* 업무 유형 이름 칸. 화면 폭을 다 쓰면 버튼이 멀어져 읽기 나쁘다. */
+.wtname{flex:0 1 320px; max-width:320px}
+/* 새로 추가하는 자리는 위의 목록과 눈에 띄게 갈라 놓는다. */
+.addrow{margin-top:20px; padding-top:16px; border-top:1px solid var(--sep)}
+.addrow .lbl{display:block; font-size:12px; color:var(--text-3); margin-bottom:8px}
 .spacer{flex:1 1 auto}
 
 .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
@@ -142,6 +147,9 @@ nav.top .right{margin-left:auto}
 .btn.danger{background:transparent; color:var(--red); padding-left:10px; padding-right:10px}
 .btn.danger:hover{background:color-mix(in srgb,var(--red) 12%,transparent)}
 .btn.sm{padding:5px 11px; font-size:13px}
+/* 글자만 있는 버튼. [수정]처럼 옆의 [삭제]와 짝을 이룰 때 쓴다. */
+.btn.plain{background:transparent; color:var(--accent); padding-left:10px; padding-right:10px}
+.btn.plain:hover{background:color-mix(in srgb,var(--accent) 11%,transparent)}
 .btn[disabled]{opacity:.38; cursor:default}
 .btn:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 45%,transparent); outline-offset:2px}
 

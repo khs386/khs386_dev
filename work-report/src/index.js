@@ -536,7 +536,13 @@ function prepareBriefHtml(html) {
     // 브라우저 기본색(검정)과 밑줄이 나와 읽히지 않는다. 그 링크 주소는 늘 같으니
     // 주소로 집어서 바로잡는다. 어떻게 꾸며져 있든 이 한 곳만 손댄다.
     '<style>a[href^="https://claude.ai/new"]' +
-    '{color:#ffffff !important;text-decoration:none !important}</style>' +
+    '{color:#ffffff !important;text-decoration:none !important}' +
+    // 브리프는 Pretendard를 먼저 찾고 글자 다듬기 설정이 없어서 앱보다 굵게 보인다.
+    // 서체와 다듬기만 앱과 같게 맞춘다. 크기와 배치는 문서 것을 그대로 둔다.
+    'html,body{font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',' +
+    "'Apple SD Gothic Neo','Helvetica Neue','Malgun Gothic',sans-serif !important;" +
+    '-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;' +
+    'letter-spacing:-.01em}</style>' +
     // 액자 안에서도 스크롤이 생기면 세로 막대가 둘이 된다. 문서가 자기 높이를
     // 알려 주면 바깥에서 액자를 그만큼 늘려, 페이지 스크롤 하나만 남는다.
     '<script>(function(){function s(){try{parent.postMessage({briefHeight:' +
