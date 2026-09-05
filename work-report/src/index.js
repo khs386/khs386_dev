@@ -535,7 +535,16 @@ function prepareBriefHtml(html) {
     // [리마인드 초안 잡기] 버튼은 파란 바탕인데, 만드는 쪽에서 글자색을 빠뜨리면
     // 브라우저 기본색(검정)과 밑줄이 나와 읽히지 않는다. 그 링크 주소는 늘 같으니
     // 주소로 집어서 바로잡는다. 어떻게 꾸며져 있든 이 한 곳만 손댄다.
-    '<style>a[href^="https://claude.ai/new"]' +
+    // 브리프 안의 버튼 두 개는 모양을 앱이 책임진다. 문서는 클래스 이름만 붙이면
+    // 되고, 색을 빠뜨려도 여기서 잡힌다. 클래스 없는 옛 브리프의 버튼도 흰 글자로.
+    '<style>a.btn-reply,a.btn-remind{display:inline-block;border-radius:8px;' +
+    'padding:8px 13px;font-size:13px;font-weight:500;line-height:1.25;' +
+    'white-space:nowrap;text-decoration:none !important}' +
+    'a.btn-reply{background:#3B6FE8 !important;color:#ffffff !important;' +
+    'border:1.5px solid #3B6FE8 !important}' +
+    'a.btn-remind{background:#ffffff !important;color:#3B6FE8 !important;' +
+    'border:1.5px solid #3B6FE8 !important}' +
+    'a[href^="https://claude.ai/new"]:not(.btn-remind)' +
     '{color:#ffffff !important;text-decoration:none !important}' +
     // 브리프가 앱보다 굵고 커 보인다. 서체·다듬기에 더해 본문과 제목의 크기·굵기까지
     // 앱과 같은 값으로 맞춘다. 여백과 배치는 문서 것을 그대로 둔다.
