@@ -535,6 +535,11 @@ app.get('/brief', async (c) => {
  *   4. 남은 버튼을 문장 아래에서 항목 오른쪽으로 옮긴다. 항목은 버튼 글자를 뺀
  *      본문이 열 자 넘게 담긴 가장 작은 조상으로 찾고, 그 안에 절대 위치로 세워
  *      원래 짜임새는 건드리지 않는다. 좁은 화면에서는 아래에 그대로 둔다.
+ *   5. 맨 위 여백을 잰 뒤 14px만 남기고 깎는다. 문서는 저 혼자 열릴 때를 생각해
+ *      위를 넓게 비우는데, 액자 안에서는 카드 테두리와 제목 사이가 허전하다.
+ *      여백이 body에 있는지 바깥 상자에 있는지 문서마다 다르므로, 재서 그만큼만
+ *      덜어 낸다. 테두리나 바탕색이 있는 상자를 만나면 거기서 멈춘다 — 그건
+ *      여백이 아니라 카드다.
  */
 const BRIEF_FIXUP = `<script>(function(){
 var S='a[href^="https://claude.ai/new"]';
@@ -582,7 +587,24 @@ function run(){
     if(getComputedStyle(it).position==='static')it.style.position='relative';
     it.appendChild(col);
     it.style.paddingRight=(col.offsetWidth+18)+'px'})}
-addEventListener('load',run);setTimeout(run,200);setTimeout(run,900);
+function bare(n){var c=getComputedStyle(n);
+  return c.borderTopWidth==='0px'&&c.backgroundColor==='rgba(0, 0, 0, 0)'}
+function trim(){
+  var el=document.body,g=0;
+  while(el&&g++<4){
+    var f=el.firstElementChild; if(!f)return;
+    var ex=f.getBoundingClientRect().top-14;
+    if(ex>1){
+      var pt=parseFloat(getComputedStyle(el).paddingTop)||0,c=Math.min(pt,ex);
+      if(c>0){el.style.paddingTop=(pt-c)+'px';ex-=c}
+      if(ex>1){var mt=parseFloat(getComputedStyle(f).marginTop)||0,d=Math.min(mt,ex);
+        if(d>0){f.style.marginTop=(mt-d)+'px';ex-=d}}
+      if(ex<=1)return}
+    if(!bare(f)||!f.firstElementChild)return;
+    if(f.firstElementChild.getBoundingClientRect().top-14<=1)return;
+    el=f}}
+function all(){run();trim()}
+addEventListener('load',all);setTimeout(all,200);setTimeout(all,900);
 })()<\/script>`
 
 /**
@@ -621,10 +643,7 @@ function prepareBriefHtml(html) {
     'h2{font-size:17px !important;font-weight:700 !important;letter-spacing:-.02em !important}' +
     'h3,h4{font-size:15px !important;font-weight:600 !important;letter-spacing:-.018em !important}' +
     'b,strong{font-weight:600 !important}' +
-    // 문서가 저 혼자 있을 때를 생각해 위쪽에 큰 여백을 두는데, 액자 안에서는
-    // 카드 테두리와 제목 사이가 허전해진다. 위 여백만 줄인다.
-    'body{padding-top:14px !important;margin-top:0 !important}' +
-    'body>*:first-child{margin-top:0 !important}' +
+    'body{margin-top:0 !important}' +
     '</style>' +
     BRIEF_FIXUP +
     // 액자 안에서도 스크롤이 생기면 세로 막대가 둘이 된다. 문서가 자기 높이를

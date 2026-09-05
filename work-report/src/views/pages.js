@@ -85,7 +85,7 @@ export function tasksPage({ tasks, editing, archived, seriesNames, workTypes, ar
   <div class="chead"><h2>${editing ? '단위업무 수정' : '단위업무 추가'}</h2></div>
   <form method="post" action="${editing ? `/tasks/${editing.id}/save` : '/tasks/new'}">
     <div class="row bottom" style="margin-bottom:12px">
-      <div class="fld grow"><label>업무명</label>
+      <div class="fld grow"><label>단위업무명</label>
         <input name="title" value="${esc(f.title)}" placeholder="예: 꼬마생각 샘플권 감수본 확인" required></div>
       <label class="chk">
         <input type="checkbox" name="is_misc" value="1"${f.is_misc ? ' checked' : ''}>
