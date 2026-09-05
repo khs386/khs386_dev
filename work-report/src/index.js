@@ -532,7 +532,11 @@ app.get('/brief', async (c) => {
  *      알 수 없다.
  *   4. 남은 버튼을 문장 아래에서 항목 오른쪽으로 옮긴다. 항목은 버튼 글자를 뺀
  *      본문이 열 자 넘게 담긴 가장 작은 조상으로 찾고, 그 안에 절대 위치로 세워
- *      원래 짜임새는 건드리지 않는다. 좁은 화면에서는 아래에 그대로 둔다.
+ *      원래 짜임새는 건드리지 않는다. 옮기고 나서 글 칸에 300px이 안 남으면
+ *      되돌려 아래에 둔다 — 휴대폰에서 제목이 한 자씩 끊기는 것보다 낫다.
+ *      폭을 보는 것은 이 마지막 단계뿐이다. 앞의 손질은 화면이 좁아도 다 한다.
+ *      자리 잡기는 따로 떼어 두고 여러 번 다시 부른다. 액자가 폭을 갖기 전에
+ *      재면 0이 나오고, 창 크기가 바뀌면 답도 달라지기 때문이다.
  *   5. 다크 모드 단추를 지운다. 액자 안에서는 앱 화면의 밝기를 따라야 해서
  *      문서 혼자 어두워지면 오히려 어긋난다.
  *   6. 맨 위 여백을 잰 뒤 20px만 남기고 깎는다. 문서는 저 혼자 열릴 때를 생각해
@@ -558,6 +562,28 @@ function owner(a){var n=a.parentElement,g=0,t=0;
     if(up.clientHeight>n.clientHeight+60)break;
     n=up}
   return n}
+var COLS=[];
+function host(it,col){
+  if(getComputedStyle(it).display.indexOf('flex')<0)return it;
+  var best=it,bl=-1;
+  for(var i=0;i<it.children.length;i++){var c=it.children[i]; if(c===col)continue;
+    var l=W(c); if(l>bl){bl=l;best=c}}
+  return best}
+function place(it,col){
+  var vw=document.documentElement.clientWidth; if(!vw)return;
+  it.style.paddingRight='';
+  col.style.cssText='display:inline-flex;flex-direction:column;gap:7px;align-items:flex-start';
+  if(col.parentElement!==it)it.appendChild(col);
+  var w=col.getBoundingClientRect().width;
+  if(vw>=620&&it.getBoundingClientRect().width-w>=300){
+    if(getComputedStyle(it).position==='static')it.style.position='relative';
+    col.style.cssText='position:absolute;right:0;top:50%;transform:translateY(-50%);'
+      +'display:flex;flex-direction:column;gap:7px;align-items:stretch';
+    it.style.paddingRight=(w+18)+'px'; return}
+  // 좁을 때는 글 칸 안으로 되돌린다. 옆 칸으로 두면 제목이 한 자씩 끊긴다.
+  var h=host(it,col); if(h!==col.parentElement)h.appendChild(col);
+  col.style.marginTop='9px'}
+function relayout(){COLS.forEach(function(c){place(c[0],c[1])})}
 function run(){
   var A=[].slice.call(document.querySelectorAll(S)); if(!A.length)return;
   var keys=[],grp=[];
@@ -572,9 +598,9 @@ function run(){
     var it=owner(a); if(!it||it.hasAttribute('data-fxcol'))return;
     var i=keys.indexOf(it); if(i<0){keys.push(it);grp.push([a])}else grp[i].push(a)});
   keys.forEach(function(it,i){
-    if(it.clientWidth<420)return;
+    it.setAttribute('data-fxcol','1');
     var col=document.createElement('div');
-    col.style.cssText='position:absolute;right:0;top:50%;transform:translateY(-50%)';
+    col.style.cssText='display:inline-flex;flex-direction:column;gap:7px;align-items:flex-start';
     var rem=[],rep=[];
     grp[i].forEach(function(a){(/회신/.test(a.textContent)?rep:rem).push(a)});
     var keep=(rem.length?rem:rep)[0];
@@ -583,10 +609,8 @@ function run(){
       if(a===keep)col.appendChild(a);else h.removeChild(a);
       while(h&&h!==it&&!h.textContent.trim()&&!h.querySelector('img,svg')){
         var up=h.parentElement; up.removeChild(h); h=up}});
-    it.setAttribute('data-fxcol','1');
-    if(getComputedStyle(it).position==='static')it.style.position='relative';
     it.appendChild(col);
-    it.style.paddingRight=(col.offsetWidth+18)+'px'})}
+    COLS.push([it,col])})}
 function nodark(){
   var L=document.querySelectorAll('div,p,button,a,span');
   for(var i=0;i<L.length;i++){
@@ -613,8 +637,9 @@ function trim(){
     if(!bare(f)||!f.firstElementChild)return;
     if(f.firstElementChild.getBoundingClientRect().top-20<=1)return;
     el=f}}
-function all(){nodark();run();trim()}
-addEventListener('load',all);setTimeout(all,200);setTimeout(all,900);
+function all(){nodark();run();relayout();trim()}
+addEventListener('load',all);addEventListener('resize',relayout);
+setTimeout(all,200);setTimeout(all,900);setTimeout(all,2000);
 })()<\/script>`
 
 /**
