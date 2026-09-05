@@ -671,12 +671,38 @@ ${
             <a href="/reports/preview?kind=${kind}&date=${date}"
                target="_blank" rel="noreferrer">새 탭에서 크게 보기</a></div>
           <span class="count mono">${esc(report.filename)}</span></div>
-        <iframe class="preview" title="보고서 미리보기" src="/reports/preview?kind=${kind}&date=${date}"></iframe>
+        <!-- 보고서 문서는 920~960px로 폭이 정해져 있다. 좁은 자리에 그대로 넣으면
+             가로 막대가 생겨 오른쪽이 잘린다. 원래 폭으로 그린 뒤 자리에 맞춰 줄인다. -->
+        <div class="previewbox">
+          <iframe class="preview" title="보고서 미리보기"
+                  src="/reports/preview?kind=${kind}&date=${date}"></iframe>
+        </div>
         ${report.drive_link ? `<p class="count" style="margin-top:10px">드라이브에 저장됨 ·
           <a href="${esc(report.drive_link)}" target="_blank" rel="noreferrer">파일 열기</a></p>` : ''}
       </div>`
     : '<p class="empty">아직 만들어진 보고서가 없습니다. 날짜를 고르고 "보고서 만들기"를 누르세요.</p>'
 }
+
+<script>
+// 미리보기를 자리 폭에 맞춰 줄인다. 줄인 만큼 액자를 세로로 늘려, 보이는
+// 높이는 그대로 두면서 문서 전체 폭이 한눈에 들어오게 한다.
+;(function () {
+  var W = 980
+  function fit() {
+    var box = document.querySelector('.previewbox')
+    if (!box) return
+    var f = box.querySelector('iframe.preview')
+    if (!f || !box.clientWidth) return
+    var k = Math.min(1, box.clientWidth / W)
+    f.style.width = W + 'px'
+    f.style.height = Math.round(box.clientHeight / k) + 'px'
+    f.style.transform = 'scale(' + k + ')'
+  }
+  addEventListener('load', fit)
+  addEventListener('resize', fit)
+  fit()
+})()
+<\/script>
 
 <div class="card">
   <div class="chead"><h2>생성 이력</h2><span class="count">최근 30건</span></div>

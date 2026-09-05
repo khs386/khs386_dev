@@ -255,8 +255,11 @@ nav.top .right{margin-left:auto}
 .bnum li.more::before{content:''}
 iframe.brief{width:100%; height:70vh; min-height:420px; border:0;
   background:#fff; display:block; overflow:hidden}
-iframe.preview{width:100%; height:640px; border:1px solid var(--sep-soft);
-  border-radius:var(--r); background:#fff}
+/* 보고서 미리보기. 액자는 자리를 지키고, 그 안의 문서만 줄여 넣는다. */
+.previewbox{position:relative; height:640px; overflow:hidden; background:#fff;
+  border:1px solid var(--sep-soft); border-radius:var(--r)}
+iframe.preview{position:absolute; top:0; left:0; width:980px; height:640px;
+  border:0; background:#fff; transform-origin:0 0}
 
 /* 탭 — 애플 세그먼티드 컨트롤 */
 .tabs{display:inline-flex; gap:2px; margin-bottom:16px; padding:2px;
