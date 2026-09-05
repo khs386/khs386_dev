@@ -160,30 +160,40 @@ export async function prevDetails(db, taskIds, before) {
 export async function addLogFromTask(db, date, task, order) {
   const prev = await lastLogForTask(db, task.id, date)
   const src = prev || task
+  const id = uuid()
   await db
     .prepare(
       `insert into daily_logs
         (id, log_date, task_id, title, detail_lines, status, priority, progress, deadline, is_misc, sort_order)
        values (?, ?, ?, ?, '[]', ?, ?, ?, ?, ?, ?)`
     )
-    .bind(uuid(), date, task.id, task.title,
+    .bind(id, date, task.id, task.title,
           src.status, src.priority, src.progress, src.deadline, bool(src.is_misc), order)
     .run()
-  return { carried: !!prev }
+  return { id, carried: !!prev }
 }
 
+/** 딸린 단위업무 없이 그 자리에서 적어 넣은 줄. 만든 id를 돌려준다. */
 export async function addLogFree(db, date, title, order) {
+  const id = uuid()
   await db
     .prepare(
       `insert into daily_logs
         (id, log_date, task_id, title, detail_lines, status, priority, sort_order, is_misc)
        values (?, ?, null, ?, '[]', '진행', '중간', ?, ?)`
     )
-    .bind(uuid(), date, title, order, bool(title === '기타 사항'))
+    .bind(id, date, title, order, bool(title === '기타 사항'))
     .run()
+  return id
 }
 
 /** 기록을 저장하고, 연결된 단위 업무의 상태·진행률·마감도 함께 맞춘다. */
+/**
+ * 일일 기록 한 줄을 통째로 저장한다.
+ *
+ * 표에서는 업무명 칸도 고칠 수 있다. 목록에 있는 이름을 넣으면 그 단위업무에 붙고
+ * (task_id), 아무 말이나 적으면 딸린 업무가 없는 줄이 된다.
+ */
 export async function saveLog(db, id, f) {
   const lines = String(f.detail_text || '')
     .split('\n')
@@ -191,10 +201,10 @@ export async function saveLog(db, id, f) {
     .filter(Boolean)
   await db
     .prepare(
-      `update daily_logs set detail_lines = ?, status = ?, priority = ?,
+      `update daily_logs set task_id = ?, title = ?, detail_lines = ?, status = ?, priority = ?,
               progress = ?, deadline = ?, is_misc = ? where id = ?`
     )
-    .bind(JSON.stringify(lines), f.status, f.priority, num(f.progress),
+    .bind(str(f.task_id), f.title, JSON.stringify(lines), f.status, f.priority, num(f.progress),
           str(f.deadline), bool(f.is_misc), id)
     .run()
 
@@ -205,6 +215,11 @@ export async function saveLog(db, id, f) {
       .bind(f.status, f.priority, num(f.progress), str(f.deadline), log.task_id)
       .run()
   }
+}
+
+export async function getLog(db, id) {
+  const r = await db.prepare('select * from daily_logs where id = ?').bind(id).first()
+  return r ? rowLog(r) : null
 }
 
 export async function deleteLog(db, id) {
@@ -240,26 +255,33 @@ export async function listWeekly(db, weekStart) {
 }
 
 export async function addWeeklyItem(db, weekStart, kind, item, order) {
+  const id = uuid()
   await db
     .prepare(
       `insert into weekly_items
         (id, week_start, kind, task_id, title, work_type, status, progress, due_date, note, output, sort_order)
-       values (?, ?, ?, ?, ?, ?, ?, ?, ?, '', '', ?)`
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .bind(uuid(), weekStart, kind, item.task_id || null, item.title, str(item.work_type),
-          str(item.status), num(item.progress), str(item.due_date), order)
+    .bind(id, weekStart, kind, item.task_id || null, item.title, str(item.work_type),
+          str(item.status), num(item.progress), str(item.due_date),
+          item.note || '', item.output || '', order)
     .run()
+  return id
 }
 
 export async function saveWeeklyItem(db, id, f) {
   await db
     .prepare(
-      `update weekly_items set title = ?, work_type = ?, status = ?, progress = ?,
+      `update weekly_items set task_id = ?, title = ?, work_type = ?, status = ?, progress = ?,
               due_date = ?, note = ?, output = ? where id = ?`
     )
-    .bind(f.title, str(f.work_type), str(f.status), num(f.progress),
+    .bind(str(f.task_id), f.title, str(f.work_type), str(f.status), num(f.progress),
           str(f.due_date), f.note || '', f.output || '', id)
     .run()
+}
+
+export async function getWeeklyItem(db, id) {
+  return await db.prepare('select * from weekly_items where id = ?').bind(id).first()
 }
 
 export async function deleteWeeklyItem(db, id) {

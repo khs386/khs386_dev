@@ -7,12 +7,13 @@ import { driveConfigured, uploadHtml } from './lib/drive.js'
 import {
   todayKST, skipReason, generateReport, filenameFor,
 } from './lib/reports.js'
-import { weekStart, dday } from './lib/report/format.js'
+import { weekStart } from './lib/report/format.js'
 import { STAGES } from './lib/series.js'
 import { loginPage, FAVICON } from './views/layout.js'
 import { privacyPage, termsPage } from './views/legal.js'
 import {
   todayPage, tasksPage, dailyPage, weeklyPage, seriesPage, reportsPage, briefPage,
+  dailyRow, weeklyRow,
 } from './views/pages.js'
 
 const app = new Hono()
@@ -189,67 +190,16 @@ app.get('/daily', async (c) => {
     db.listTasks(c.env.DB),
     db.getSettings(c.env.DB),
   ])
-  const used = new Set(logs.map((l) => l.task_id).filter(Boolean))
-  const prev = await db.prevDetails(c.env.DB, [...used], date)
+  const used = logs.map((l) => l.task_id).filter(Boolean)
+  const prev = await db.prevDetails(c.env.DB, used, date)
   return html(c, dailyPage({
     date,
     logs: logs.map((l) => ({ ...l, prev_detail: prev[l.task_id] || '' })),
-    available: tasks.filter((t) => !used.has(t.id)),
+    tasks,
     hasTasks: tasks.length > 0,
-    skip: skipReason(date, settings.holidays), today: todayKST(),
-    saved: c.req.query('saved'),
+    skip: skipReason(date, settings.holidays),
+    today: todayKST(),
   }))
-})
-
-app.post('/daily/add', async (c) => {
-  const form = await c.req.formData()
-  const date = dateOr(form.get('date'), todayKST())
-  const task = await db.getTask(c.env.DB, form.get('task_id'))
-  if (!task) return back(c, `/daily?date=${date}`, '업무를 고르지 않았습니다.')
-  const logs = await db.listLogs(c.env.DB, date)
-  const { carried } = await db.addLogFromTask(c.env.DB, date, task, logs.length)
-  return back(
-    c,
-    `/daily?date=${date}`,
-    `"${task.title}"을(를) 넣었습니다.` + (carried ? ' 직전 기록을 가져왔습니다.' : '')
-  )
-})
-
-app.post('/daily/add-free', async (c) => {
-  const form = await c.req.formData()
-  const date = dateOr(form.get('date'), todayKST())
-  const title = (form.get('title') || '').trim()
-  if (!title) return back(c, `/daily?date=${date}`, '업무명을 입력해 주세요.')
-  const logs = await db.listLogs(c.env.DB, date)
-  await db.addLogFree(c.env.DB, date, title, logs.length)
-  return back(c, `/daily?date=${date}`, `"${title}"을(를) 넣었습니다.`)
-})
-
-app.post('/daily/:id/save', async (c) => {
-  const form = await c.req.formData()
-  const date = dateOr(form.get('date'), todayKST())
-  await db.saveLog(c.env.DB, c.req.param('id'), {
-    detail_text: form.get('detail_text') || '',
-    status: form.get('status') || '진행',
-    priority: form.get('priority') || '중간',
-    progress: form.get('progress'),
-    deadline: form.get('deadline'),
-    is_misc: form.get('is_misc') === '1',
-  })
-  const id = c.req.param('id')
-  return c.redirect(`/daily?date=${date}&saved=${id}#log-${id}`)
-})
-
-app.post('/daily/:id/delete', async (c) => {
-  const form = await c.req.formData()
-  await db.deleteLog(c.env.DB, c.req.param('id'))
-  return back(c, `/daily?date=${dateOr(form.get('date'), todayKST())}`, '삭제했습니다.')
-})
-
-app.post('/daily/:id/move', async (c) => {
-  const form = await c.req.formData()
-  await db.moveLog(c.env.DB, c.req.param('id'), Number(form.get('dir')) || 1)
-  return c.redirect(`/daily?date=${dateOr(form.get('date'), todayKST())}`)
 })
 
 /* ── 주간 현황 ──────────────────────────────────────────── */
@@ -262,66 +212,118 @@ app.get('/weekly', async (c) => {
     db.listTasks(c.env.DB),
     db.listWorkTypes(c.env.DB),
   ])
-  return html(c, weeklyPage({
-    date, weekStart: ws, items, tasks,
-    workTypes,
-    saved: c.req.query('saved'),
-  }))
+  return html(c, weeklyPage({ date, weekStart: ws, items, tasks, workTypes, today: todayKST() }))
 })
 
-app.post('/weekly/add', async (c) => {
-  const form = await c.req.formData()
-  const date = dateOr(form.get('date'), todayKST())
-  const kind = form.get('kind')
-  const task = await db.getTask(c.env.DB, form.get('task_id'))
-  if (!task) return back(c, `/weekly?date=${date}`, '업무를 고르지 않았습니다.')
-  const items = await db.listWeekly(c.env.DB, weekStart(date))
-  await db.addWeeklyItem(c.env.DB, weekStart(date), kind, {
-    task_id: task.id, title: task.title, work_type: task.work_type,
-    status: kind === '전주 실적' ? task.status : null,
-    progress: kind === '전주 실적' ? task.progress : null,
-    due_date: task.deadline,
-  }, items.filter((i) => i.kind === kind).length)
-  return back(c, `/weekly?date=${date}`, '넣었습니다.')
-})
+/* ── 표가 부르는 곳 ─────────────────────────────────────── */
+//
+// 화면의 표는 칸을 벗어날 때마다 그 줄을 통째로 여기로 보낸다. 만들기와 고치기를
+// 한 곳에서 받는다 — id가 없으면 새 줄이다. 답으로는 저장된 줄을 그대로 돌려주어
+// 화면이 서버가 정한 값(직전 기록에서 가져온 값 같은)으로 다시 그리게 한다.
 
-app.post('/weekly/add-free', async (c) => {
-  const form = await c.req.formData()
-  const date = dateOr(form.get('date'), todayKST())
-  const kind = form.get('kind')
-  const title = (form.get('title') || '').trim()
-  if (!title) return back(c, `/weekly?date=${date}`, '업무명을 입력해 주세요.')
-  const items = await db.listWeekly(c.env.DB, weekStart(date))
-  await db.addWeeklyItem(c.env.DB, weekStart(date), kind, {
-    // 직접 적어 넣은 항목은 딸린 단위업무가 없어 시리즈를 알 수 없다.
-    // 유형은 비워 두고 화면에서 고르게 한다.
-    title, work_type: '',
-    status: kind === '전주 실적' ? '진행' : null,
-    progress: null, due_date: null,
-  }, items.filter((i) => i.kind === kind).length)
-  return back(c, `/weekly?date=${date}`, '넣었습니다.')
-})
+/** 보내오지 않은 칸은 이미 있는 값을 그대로 둔다. */
+const pick = (sent, cur) => (sent === '' || sent === null || sent === undefined ? cur : sent)
 
-app.post('/weekly/:id/save', async (c) => {
-  const form = await c.req.formData()
-  const date = dateOr(form.get('date'), todayKST())
-  await db.saveWeeklyItem(c.env.DB, c.req.param('id'), {
-    title: form.get('title') || '',
-    work_type: form.get('work_type'),
-    status: form.get('status'),
-    progress: form.get('progress'),
-    due_date: form.get('due_date'),
-    note: form.get('note'),
-    output: form.get('output'),
+app.post('/api/daily/row', async (c) => {
+  const b = await c.req.json().catch(() => ({}))
+  const date = dateOr(b.date, todayKST())
+  const title = String(b.title || '').trim()
+  let id = String(b.id || '')
+  let note = ''
+
+  if (!id) {
+    if (!title) return c.json({ ok: false, error: '업무명이 없습니다.' }, 400)
+    const logs = await db.listLogs(c.env.DB, date)
+    const task = b.task_id ? await db.getTask(c.env.DB, b.task_id) : null
+    if (task) {
+      const made = await db.addLogFromTask(c.env.DB, date, task, logs.length)
+      id = made.id
+      if (made.carried) note = '직전 기록을 가져왔습니다.'
+    } else {
+      id = await db.addLogFree(c.env.DB, date, title, logs.length)
+    }
+  }
+
+  // 새로 만든 줄이든 있던 줄이든, 화면이 보낸 값을 지금 값 위에 얹어 저장한다.
+  const cur = await db.getLog(c.env.DB, id)
+  if (!cur) return c.json({ ok: false, error: '없는 줄입니다.' }, 404)
+  await db.saveLog(c.env.DB, id, {
+    task_id: b.task_id || null,
+    title: title || cur.title,
+    detail_text: pick(b.detail_text, (cur.detail_lines || []).join('\n')),
+    status: pick(b.status, cur.status) || '진행',
+    priority: pick(b.priority, cur.priority) || '중간',
+    progress: pick(b.progress, cur.progress),
+    deadline: pick(b.deadline, cur.deadline),
+    is_misc: b.is_misc === undefined ? !!cur.is_misc : !!b.is_misc,
   })
-  const id = c.req.param('id')
-  return c.redirect(`/weekly?date=${date}&saved=${id}#item-${id}`)
+
+  const saved = await db.getLog(c.env.DB, id)
+  const prev = await db.prevDetails(c.env.DB, saved.task_id ? [saved.task_id] : [], date)
+  return c.json({
+    ok: true, note,
+    row: dailyRow({ ...saved, prev_detail: prev[saved.task_id] || '' }),
+  })
 })
 
-app.post('/weekly/:id/delete', async (c) => {
-  const form = await c.req.formData()
-  await db.deleteWeeklyItem(c.env.DB, c.req.param('id'))
-  return back(c, `/weekly?date=${dateOr(form.get('date'), todayKST())}`, '삭제했습니다.')
+app.post('/api/daily/delete', async (c) => {
+  const b = await c.req.json().catch(() => ({}))
+  if (!b.id) return c.json({ ok: false }, 400)
+  await db.deleteLog(c.env.DB, b.id)
+  return c.json({ ok: true })
+})
+
+app.post('/api/daily/move', async (c) => {
+  const b = await c.req.json().catch(() => ({}))
+  if (!b.id) return c.json({ ok: false }, 400)
+  await db.moveLog(c.env.DB, b.id, Number(b.dir) || 1)
+  return c.json({ ok: true })
+})
+
+app.post('/api/weekly/row', async (c) => {
+  const b = await c.req.json().catch(() => ({}))
+  const date = dateOr(b.date, todayKST())
+  const ws = weekStart(date)
+  const kind = b.kind === '금주 예정' ? '금주 예정' : '전주 실적'
+  const title = String(b.title || '').trim()
+  let id = String(b.id || '')
+
+  const task = b.task_id ? await db.getTask(c.env.DB, b.task_id) : null
+  if (!id) {
+    if (!title) return c.json({ ok: false, error: '업무명이 없습니다.' }, 400)
+    const items = await db.listWeekly(c.env.DB, ws)
+    id = await db.addWeeklyItem(c.env.DB, ws, kind, {
+      task_id: task ? task.id : null,
+      title,
+      work_type: pick(b.work_type, task ? task.work_type : ''),
+      status: kind === '전주 실적' ? pick(b.status, task ? task.status : '') : null,
+      progress: kind === '전주 실적' ? pick(b.progress, task ? task.progress : null) : null,
+      due_date: pick(b.due_date, task ? task.deadline : ''),
+      note: b.note || '',
+      output: b.output || '',
+    }, items.filter((i) => i.kind === kind).length)
+  } else {
+    const cur = await db.getWeeklyItem(c.env.DB, id)
+    if (!cur) return c.json({ ok: false, error: '없는 줄입니다.' }, 404)
+    await db.saveWeeklyItem(c.env.DB, id, {
+      task_id: b.task_id || null,
+      title: title || cur.title,
+      work_type: b.work_type,
+      status: kind === '전주 실적' ? b.status : null,
+      progress: kind === '전주 실적' ? b.progress : null,
+      due_date: b.due_date,
+      note: b.note,
+      output: b.output,
+    })
+  }
+  return c.json({ ok: true, row: weeklyRow(await db.getWeeklyItem(c.env.DB, id)) })
+})
+
+app.post('/api/weekly/delete', async (c) => {
+  const b = await c.req.json().catch(() => ({}))
+  if (!b.id) return c.json({ ok: false }, 400)
+  await db.deleteWeeklyItem(c.env.DB, b.id)
+  return c.json({ ok: true })
 })
 
 /** 지난 주 '금주 예정'을 이번 주 '전주 실적'으로 옮겨 온다. 이미 있는 항목은 건너뛴다. */

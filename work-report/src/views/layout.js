@@ -1,5 +1,7 @@
 // 화면 공통 껍데기와 작은 조각들. 서버에서 HTML을 그려 보낸다.
 
+import { SHEET_CSS } from './sheet.js'
+
 export function esc(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -86,6 +88,8 @@ select{appearance:none; padding-right:30px;
   background-size:5px 5px,5px 5px; background-repeat:no-repeat}
 
 .container{max-width:940px; margin:0 auto; padding:26px 22px 90px}
+/* 표가 놓이는 화면은 열이 많다. 가로로 밀지 않게 여기만 넓힌다. */
+.container.wide{max-width:1240px}
 .narrow{max-width:660px}
 
 /* 내비게이션 */
@@ -327,12 +331,12 @@ const TOAST = `<div id="toast" class="toast" role="status" aria-live="polite" hi
 })()
 <\/script>`
 
-export function page({ title, path, body, narrow }) {
+export function page({ title, path, body, narrow, wide }) {
   return `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 ${HEAD_ICON}
-<title>${esc(title)} · 업무관리</title><style>${CSS}</style></head>
+<title>${esc(title)} · 업무관리</title><style>${CSS}${SHEET_CSS}</style></head>
 <body>
 <nav class="top"><div class="inner">
 <span class="brand">업무관리</span>
@@ -342,7 +346,7 @@ ${NAV.map(([h, l]) =>
   <button class="btn ghost sm">로그아웃</button>
 </form>
 </div></nav>
-<main class="container${narrow ? ' narrow' : ''}">${body}</main>
+<main class="container${narrow ? ' narrow' : ''}${wide ? ' wide' : ''}">${body}</main>
 ${TOAST}
 </body></html>`
 }

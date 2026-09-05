@@ -1,5 +1,6 @@
 // 화면 여섯 개. 서버에서 HTML을 그려 보내고, 폼을 제출하면 처리 후 되돌아온다.
 import { page, esc, jsq, pill, tag, field, optionalSelect } from './layout.js'
+import { SHEET_JS, SHEET_HELP, sheetBox, jsonBlock } from './sheet.js'
 import { dday, koreanDate, koreanWeek, barHeight } from '../lib/report/format.js'
 import { SERIES_COLOR, displayStatus } from '../lib/report/colors.js'
 import { statusTint, priorityTint, ddayTint } from './ui.js'
@@ -404,83 +405,41 @@ function workTypeCard(workTypes, seriesNames) {
 </div>`
 }
 
-/* ── 업무 고르는 칸 ─────────────────────────────────────── */
-
-/**
- * 업무를 고르는 칸. 목록은 시간이 갈수록 길어지므로 두 가지를 얹는다.
- *   - 시리즈로 묶어 어느 갈래인지 한눈에 보이게 한다.
- *   - 여남은 개를 넘으면 글자로 걸러 내는 칸을 앞에 둔다.
- */
-function taskPicker(tasks) {
-  const opt = (t) => `<option value="${esc(t.id)}">${esc(t.title)}</option>`
-  const groups = []
-  for (const t of tasks) {
-    const name = t.series || ''
-    let g = groups.find((x) => x.name === name)
-    if (!g) groups.push((g = { name, items: [] }))
-    g.items.push(t)
-  }
-  const body = groups
-    .map((g) =>
-      g.name
-        ? `<optgroup label="${esc(g.name)}">${g.items.map(opt).join('')}</optgroup>`
-        : g.items.map(opt).join('')
-    )
-    .join('')
-  return (
-    `<span class="picker row grow">` +
-    (tasks.length > 8
-      ? `<input class="pq" data-pq placeholder="찾기" aria-label="업무 찾기">`
-      : '') +
-    `<select name="task_id" class="grow">` +
-    `<option value="">업무 목록에서 선택</option>${body}</select></span>`
-  )
-}
-
-/** 고르는 칸의 글자 거르개. 일일업무·주간업무 두 화면이 함께 쓴다. */
-const PICKER_JS = `
-<script>
-;(function () {
-  function esc(s) {
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;')
-  }
-  document.querySelectorAll('.picker').forEach(function (box) {
-    var q = box.querySelector('[data-pq]')
-    var sel = box.querySelector('select')
-    if (!q || !sel) return
-    var all = [].map.call(sel.querySelectorAll('option'), function (o) {
-      return {
-        v: o.value, t: o.textContent,
-        g: o.parentElement.tagName === 'OPTGROUP' ? o.parentElement.label : '',
-      }
-    })
-    q.addEventListener('input', function () {
-      var t = q.value.trim().toLowerCase()
-      var list = all.filter(function (o) { return !o.v || o.t.toLowerCase().indexOf(t) >= 0 })
-      var html = '', g = ''
-      list.forEach(function (o) {
-        if (o.g !== g) {
-          if (g) html += '</optgroup>'
-          g = o.g
-          if (g) html += '<optgroup label="' + esc(g) + '">'
-        }
-        html += '<option value="' + esc(o.v) + '">' + esc(o.t) + '</option>'
-      })
-      if (g) html += '</optgroup>'
-      sel.innerHTML = html
-      // 걸러 낸 첫 후보를 바로 고른다. 한 번 더 누르지 않아도 되게.
-      sel.selectedIndex = list.length > 1 ? 1 : 0
-    })
-  })
-})()
-<\/script>`
-
 /* ── 일일업무 ──────────────────────────────────────────── */
 
-const savedMark = (on) =>
-  on ? '<span class="pill" style="background:var(--green)">저장했습니다</span>' : ''
+/** 표가 쓰는 모양으로 바꾼다. 빈 값은 null이 아니라 ''로 보낸다. */
+const sheetTask = (t) => ({
+  id: t.id, title: t.title, series: t.series || '', work_type: t.work_type || '',
+})
+const nz = (v) => (v === null || v === undefined ? '' : v)
 
-export function dailyPage({ date, logs, available, hasTasks, skip, saved, today }) {
+export const dailyRow = (l) => ({
+  id: l.id,
+  task_id: l.task_id || null,
+  title: l.title,
+  status: nz(l.status),
+  priority: nz(l.priority),
+  progress: nz(l.progress),
+  deadline: nz(l.deadline),
+  is_misc: !!l.is_misc,
+  detail_text: (l.detail_lines || []).join('\n'),
+  prev_detail: l.prev_detail || '',
+})
+
+export function dailyPage({ date, logs, tasks, hasTasks, skip, today }) {
+  const data = {
+    date, today,
+    statuses: STATUSES,
+    statusesW: [...STATUSES, '종결'],
+    priorities: PRIORITIES,
+    tasks: tasks.map(sheetTask),
+    types: [],
+    grids: [{
+      id: 'daily', api: '/api/daily', kind: '', move: true, oncePerDay: true,
+      cols: ['task', 'status', 'prio', 'pct', 'due', 'detail', 'misc'],
+      rows: logs.map(dailyRow),
+    }],
+  }
   const body = `
 <div class="head">
   <div><h1>일일업무</h1><p>${koreanDate(date)} 에 진행한 업무와 세부내용을 적습니다.</p></div>
@@ -490,160 +449,52 @@ export function dailyPage({ date, logs, available, hasTasks, skip, saved, today 
   </form>
 </div>
 ${skip ? notice(`${date === today ? '오늘' : '이 날'}은 <b>${skip}</b>입니다. 자동 생성은 건너뜁니다.`, 'warn') : ''}
-
-<div class="card">
-  <div class="chead"><h2>업무 추가</h2><span class="count">${logs.length}건 기록됨</span></div>
-  <form method="post" action="/daily/add" class="row">
-    <input type="hidden" name="date" value="${date}">
-    ${taskPicker(available)}
-    <button class="btn"${available.length ? '' : ' disabled'}>추가</button>
-  </form>
-  <form method="post" action="/daily/add-free" class="row" style="margin-top:9px">
-    <input type="hidden" name="date" value="${date}">
-    <input name="title" class="grow" placeholder="직접 입력 (예: 기타 사항)">
-    <button class="btn ghost">직접 추가</button>
-  </form>
-  ${hasTasks ? '' : '<p class="count" style="margin-top:8px">아직 업무가 없습니다. <a href="/tasks">업무 화면</a>에서 먼저 등록하세요.</p>'}
-</div>
-
-${
-  logs.length
-    ? logs.map((l, i) => {
-        const d = dday(l.deadline, date)
-        return `<div class="card" id="log-${l.id}">
-  <div class="chead"><h2>${esc(l.title)}</h2><div class="row">
-    ${savedMark(saved === l.id)}
-    ${d === null ? '' : ddayTag(d)}
-    <label class="chk flat" title="요약 카드 집계에서 뺍니다">
-      <input type="checkbox" name="is_misc" value="1" form="save-${l.id}"${l.is_misc ? ' checked' : ''}
-             style="width:auto">
-      <span>기타 사항</span></label>
-    <form method="post" action="/daily/${l.id}/move" class="inline">
-      <input type="hidden" name="date" value="${date}"><input type="hidden" name="dir" value="-1">
-      <button class="btn ghost sm"${i === 0 ? ' disabled' : ''}>↑</button></form>
-    <form method="post" action="/daily/${l.id}/move" class="inline">
-      <input type="hidden" name="date" value="${date}"><input type="hidden" name="dir" value="1">
-      <button class="btn ghost sm"${i === logs.length - 1 ? ' disabled' : ''}>↓</button></form>
-    <button class="btn plain sm" form="save-${l.id}">저장</button>
-    <form method="post" action="/daily/${l.id}/delete" class="inline"
-          onsubmit="return confirm('&quot;${jsq(l.title)}&quot; 을(를) 이 날짜에서 지웁니다. 계속할까요?')">
-      <input type="hidden" name="date" value="${date}">
-      <button class="btn danger sm">삭제</button></form>
-  </div></div>
-  <form id="save-${l.id}" method="post" action="/daily/${l.id}/save">
-    <input type="hidden" name="date" value="${date}">
-    <div class="grid">
-      ${field('진행 상태', 'status', l.status, { options: STATUSES })}
-      ${field('우선순위', 'priority', l.priority, { options: PRIORITIES })}
-      ${field('진행률 (%)', 'progress', l.progress, { type: 'number', min: 0, max: 100 })}
-      ${field('마감 시한', 'deadline', l.deadline, { type: 'date' })}
-    </div>
-    <div class="fld" style="margin-bottom:12px">
-      <label class="lblrow">세부내용 · 한 줄에 하나씩 적으면 글머리로 들어갑니다
-        ${
-          // 목록에서 고른 줄에는 늘 자리를 둔다. 가져올 것이 없을 때 글자가 아예
-          // 사라지면 기능이 없는 것인지 내용이 없는 것인지 알 수 없다.
-          !l.task_id
-            ? ''
-            : l.prev_detail
-              ? `<a href="#" class="prevfill"
-                   data-prev="${esc(l.prev_detail).replace(/\n/g, '&#10;')}">직전 내용 가져오기</a>`
-              : '<span class="muted">직전 내용 없음</span>'
-        }</label>
-      <textarea name="detail_text" rows="3">${esc((l.detail_lines || []).join('\n'))}</textarea>
-    </div>
-  </form>
-</div>`
-      }).join('')
-    : '<p class="empty">이 날짜에 기록된 업무가 없습니다.</p>'
-}
-<script>
-// [직전 내용 가져오기] — 그 업무를 마지막으로 적은 날의 세부내용을 칸에 넣는다.
-// 적어 둔 것이 있으면 먼저 물어본다.
-document.addEventListener('click', function (e) {
-  var a = e.target.closest('a.prevfill')
-  if (!a) return
-  e.preventDefault()
-  var box = a.closest('.fld').querySelector('textarea')
-  if (box.value.trim() && !confirm('지금 적은 내용을 지우고 직전 내용으로 바꿀까요?')) return
-  box.value = a.getAttribute('data-prev')
-  box.focus()
-})
-<\/script>
-${PICKER_JS}`
-  return page({ title: '일일업무', path: '/daily', body })
+${hasTasks ? '' : notice('아직 단위업무가 없습니다. <a href="/tasks">단위업무</a>에서 먼저 등록하면 목록에서 고를 수 있습니다.', 'warn')}
+${sheetBox('daily', `<h2>${koreanDate(date)}</h2>
+  <span class="count" data-count="daily">${logs.length}건</span>`)}
+${SHEET_HELP}
+<noscript><p class="note err">이 화면은 자바스크립트가 켜져 있어야 씁니다.</p></noscript>
+${jsonBlock('sheet-data', data)}
+${SHEET_JS}`
+  return page({ title: '일일업무', path: '/daily', body, wide: true })
 }
 
 /* ── 주간업무 ──────────────────────────────────────────── */
 
-export function weeklyPage({ date, weekStart, items, tasks, workTypes, saved }) {
-  // 단위업무에서 넣은 항목은 그 업무의 시리즈를 따른다. 직접 적어 넣은 항목은
-  // 딸린 시리즈가 없으니 전체 목록에서 고른다.
-  const seriesOf = new Map(tasks.map((t) => [t.id, t.series || '']))
-  const typesFor = (taskId) => {
-    const name = taskId ? seriesOf.get(taskId) : undefined
-    return (name === undefined ? workTypes : workTypes.filter((t) => !t.series || t.series === name))
-      .map((t) => t.name)
+export const weeklyRow = (it) => ({
+  id: it.id,
+  task_id: it.task_id || null,
+  title: it.title,
+  work_type: nz(it.work_type),
+  status: nz(it.status),
+  progress: nz(it.progress),
+  due_date: nz(it.due_date),
+  output: nz(it.output),
+  note: nz(it.note),
+})
+
+export function weeklyPage({ date, weekStart, items, tasks, workTypes, today }) {
+  const byKind = (k) => items.filter((i) => i.kind === k).map(weeklyRow)
+  const data = {
+    date, today,
+    statuses: STATUSES,
+    statusesW: [...STATUSES, '종결'],
+    priorities: PRIORITIES,
+    tasks: tasks.map(sheetTask),
+    types: workTypes.map((t) => ({ name: t.name, series: t.series || '' })),
+    grids: [
+      {
+        id: 'prev', api: '/api/weekly', kind: '전주 실적', move: false, oncePerDay: false,
+        cols: ['type', 'wtitle', 'statusw', 'pct', 'duew', 'output', 'note'],
+        rows: byKind('전주 실적'),
+      },
+      {
+        id: 'plan', api: '/api/weekly', kind: '금주 예정', move: false, oncePerDay: false,
+        cols: ['type', 'wtitle', 'duew', 'note'],
+        rows: byKind('금주 예정'),
+      },
+    ],
   }
-  const byKind = (k) => items.filter((i) => i.kind === k)
-
-  const addForm = (kind) => `
-  <form method="post" action="/weekly/add" class="row">
-    <input type="hidden" name="date" value="${date}">
-    <input type="hidden" name="kind" value="${kind}">
-    ${taskPicker(tasks)}
-    <button class="btn"${tasks.length ? '' : ' disabled'}>추가</button>
-  </form>
-  <form method="post" action="/weekly/add-free" class="row" style="margin-top:9px">
-    <input type="hidden" name="date" value="${date}">
-    <input type="hidden" name="kind" value="${kind}">
-    <input name="title" class="grow" placeholder="직접 입력">
-    <button class="btn ghost">직접 추가</button>
-  </form>`
-
-  const itemCard = (it, kind) => {
-    const d = dday(it.due_date, date)
-    return `<div class="card" id="item-${it.id}">
-  <form method="post" action="/weekly/${it.id}/save">
-    <input type="hidden" name="date" value="${date}">
-    <div class="chead">
-      <input name="title" value="${esc(it.title)}" style="max-width:360px;font-weight:600">
-      <div class="row">${savedMark(saved === it.id)}${d === null ? '' : ddayTag(d)}
-        <button class="btn plain sm">저장</button>
-        <button class="btn danger sm" form="del-${it.id}">삭제</button></div>
-    </div>
-    <div class="grid">
-      ${optionalSelect('업무 유형', 'work_type', it.work_type, typesFor(it.task_id))}
-      ${
-        kind === '전주 실적'
-          ? optionalSelect('진행 상태', 'status', it.status, [...STATUSES, '종결']) +
-            field('진행률 (%)', 'progress', it.progress, { type: 'number', min: 0, max: 100 })
-          : ''
-      }
-      ${field('종결 예정일', 'due_date', it.due_date, { type: 'date' })}
-    </div>
-    <div class="grid">
-      ${kind === '전주 실적' ? field('산출물', 'output', it.output) : ''}
-      ${field('비고', 'note', it.note)}
-    </div>
-  </form>
-  <!-- 삭제 단추는 제목 줄에 있고, 폼은 저장 폼 밖에 둔다. 폼은 겹칠 수 없다. -->
-  <form id="del-${it.id}" method="post" action="/weekly/${it.id}/delete"
-        onsubmit="return confirm('&quot;${jsq(it.title)}&quot; 을(를) 이 주에서 지웁니다. 계속할까요?')">
-    <input type="hidden" name="date" value="${date}">
-  </form>
-</div>`
-  }
-
-  const section = (kind, extra) => `
-<div class="card">
-  <div class="chead"><h2>${kind}</h2><div class="row">
-    <span class="count">${byKind(kind).length}건</span>${extra || ''}</div></div>
-  ${addForm(kind)}
-</div>
-${byKind(kind).map((i) => itemCard(i, kind)).join('') ||
-  `<p class="empty">${kind} 항목이 없습니다.</p>`}`
-
   const carry = `<form method="post" action="/weekly/carry-over" class="inline">
     <input type="hidden" name="date" value="${date}">
     <button class="btn ghost sm">지난 주 예정 가져오기</button></form>`
@@ -656,10 +507,15 @@ ${byKind(kind).map((i) => itemCard(i, kind)).join('') ||
     <a class="btn alt" href="/reports?kind=weekly&date=${date}">보고서 만들기</a>
   </form>
 </div>
-${section('전주 실적', carry)}
-${section('금주 예정')}
-${PICKER_JS}`
-  return page({ title: '주간업무', path: '/weekly', body })
+${sheetBox('prev', `<h2>전주 실적</h2>
+  <span class="count" data-count="prev">${data.grids[0].rows.length}건</span>${carry}`)}
+${sheetBox('plan', `<h2>금주 예정</h2>
+  <span class="count" data-count="plan">${data.grids[1].rows.length}건</span>`)}
+${SHEET_HELP}
+<noscript><p class="note err">이 화면은 자바스크립트가 켜져 있어야 씁니다.</p></noscript>
+${jsonBlock('sheet-data', data)}
+${SHEET_JS}`
+  return page({ title: '주간업무', path: '/weekly', body, wide: true })
 }
 
 /* ── 개발현황 ─────────────────────────────────────────────── */

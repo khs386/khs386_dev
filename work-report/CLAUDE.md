@@ -49,6 +49,7 @@ master가 아니라 여기에 커밋합니다. 고친 것은 그때그때 커밋
     src/index.js          라우트, 로그인, cron, 브리프 받기·보여주기
     src/views/layout.js   공통 껍데기와 CSS
     src/views/pages.js    화면 여섯 개
+    src/views/sheet.js    일일·주간 입력 표 (엑셀처럼 칸에서 바로 고친다)
     src/lib/db.js         D1 질의
     src/lib/report/       보고서 렌더러 (골든 테스트로 묶여 있음)
     src/lib/drive.js      구글 드라이브 업로드
