@@ -506,12 +506,26 @@ app.get('/brief', async (c) => {
   return html(c, briefPage({ date, brief, history, today: todayKST() }))
 })
 
+/**
+ * 브리프 안의 링크가 액자 안에서 열리지 않도록 <base target="_blank">를 끼운다.
+ *
+ * 브리프에는 Gmail 스레드나 claude.ai로 가는 링크가 들어 있다. 그대로 두면 액자
+ * 안에서 열리려 하는데, 그 사이트들은 남의 액자에 담기는 것을 거부해서 "연결을
+ * 거부했습니다"만 뜬다. 새 탭에서 열리게 하면 정상으로 열린다.
+ */
+function openLinksInNewTab(html) {
+  const base = '<base target="_blank">'
+  const head = /<head[^>]*>/i.exec(html)
+  if (head) return html.slice(0, head.index + head[0].length) + base + html.slice(head.index + head[0].length)
+  return base + html
+}
+
 // 브리프 원본. 화면에는 iframe 안에 갇힌 채로 뜬다 — 받아 온 문서가 앱 화면을
 // 건드리지 못하게 하려는 것이다. 검색엔진·캐시에도 남기지 않는다.
 app.get('/brief/raw', async (c) => {
   const brief = await db.getBrief(c.env.DB, dateOr(c.req.query('date'), todayKST()))
   if (!brief) return c.notFound()
-  return new Response(brief.html, {
+  return new Response(openLinksInNewTab(brief.html), {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',

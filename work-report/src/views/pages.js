@@ -189,28 +189,24 @@ function briefCard(brief, today) {
 /** 브리프 보는 화면. 받아 온 문서는 iframe 안에 가둬서 띄운다. */
 export function briefPage({ date, brief, history, today }) {
   const body = `
-<div class="head">
-  <div><h1>모닝브리프</h1><p>${koreanDate(date)}</p></div>
+<!-- 브리프 문서 자체가 제목과 요약 카드를 이미 갖고 있다. 앱에서 또 그리면 두 번씩
+     나오므로, 이 화면은 날짜를 고르는 줄만 두고 문서를 그대로 보여 준다. -->
+<div class="row" style="margin:26px 0 16px">
   <form method="get" action="/brief" class="row">
     <input type="date" name="date" value="${date}" max="${today}"
            style="width:170px" onchange="this.form.submit()">
-    ${brief ? `<a class="btn ghost" href="/brief/raw?date=${date}"
-       target="_blank" rel="noreferrer">새 탭에서 크게 보기</a>` : ''}
   </form>
+  ${brief ? `<span class="count">${kstTime(brief.created_at)} 도착</span>` : ''}
+  <span class="spacer"></span>
+  ${brief ? `<a class="btn ghost" href="/brief/raw?date=${date}"
+     target="_blank" rel="noreferrer">새 탭에서 크게 보기</a>` : ''}
 </div>
 
 ${
   brief
-    ? `<div class="card">
-        <div class="chead"><h2>${brief.headline ? esc(brief.headline) : '브리프'}</h2>
-          <span class="count">${kstTime(brief.created_at)} 도착</span></div>
-        <div class="brow" style="margin-bottom:14px">
-          ${briefCount(brief.events, '오늘 일정')}
-          ${briefCount(brief.todo, '해야 할 일')}
-          ${briefCount(brief.done, '정리된 일')}
-        </div>
+    ? `<div class="card" style="padding:0;overflow:hidden">
         <iframe class="brief" title="모닝브리프" src="/brief/raw?date=${date}"
-                sandbox="allow-scripts"></iframe>
+                sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"></iframe>
       </div>`
     : `<p class="empty">${koreanDate(date)} 브리프가 없습니다.
         아침마다 클라우드의 Claude가 만들어 보냅니다.</p>`

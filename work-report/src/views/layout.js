@@ -217,8 +217,8 @@ nav.top .right{margin-left:auto}
 .bnum .bn{font-size:24px; font-weight:600; letter-spacing:-.02em;
   font-variant-numeric:tabular-nums; color:var(--text)}
 .bnum .bl{font-size:12px; color:var(--text-2)}
-iframe.brief{width:100%; height:78vh; min-height:520px; border:1px solid var(--sep-soft);
-  border-radius:10px; background:#fff; display:block}
+iframe.brief{width:100%; height:82vh; min-height:540px; border:0;
+  background:#fff; display:block}
 iframe.preview{width:100%; height:640px; border:1px solid var(--sep-soft);
   border-radius:var(--r); background:#fff}
 
