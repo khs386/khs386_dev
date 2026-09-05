@@ -340,13 +340,13 @@ ${
       <input type="checkbox" name="is_misc" value="1" form="save-${l.id}"${l.is_misc ? ' checked' : ''}
              style="width:auto">
       <span>기타 사항</span></label>
-    <button class="btn sm" form="save-${l.id}">저장</button>
     <form method="post" action="/daily/${l.id}/move" class="inline">
       <input type="hidden" name="date" value="${date}"><input type="hidden" name="dir" value="-1">
       <button class="btn ghost sm"${i === 0 ? ' disabled' : ''}>↑</button></form>
     <form method="post" action="/daily/${l.id}/move" class="inline">
       <input type="hidden" name="date" value="${date}"><input type="hidden" name="dir" value="1">
       <button class="btn ghost sm"${i === logs.length - 1 ? ' disabled' : ''}>↓</button></form>
+    <button class="btn plain sm" form="save-${l.id}">저장</button>
     <form method="post" action="/daily/${l.id}/delete" class="inline">
       <input type="hidden" name="date" value="${date}">
       <button class="btn danger sm">빼기</button></form>
@@ -400,7 +400,9 @@ export function weeklyPage({ date, weekStart, items, tasks, workTypes, saved }) 
     <input type="hidden" name="date" value="${date}">
     <div class="chead">
       <input name="title" value="${esc(it.title)}" style="max-width:360px;font-weight:600">
-      <div class="row">${savedMark(saved === it.id)}${d === null ? '' : ddayTag(d)}</div>
+      <div class="row">${savedMark(saved === it.id)}${d === null ? '' : ddayTag(d)}
+        <button class="btn plain sm">저장</button>
+        <button class="btn danger sm" form="del-${it.id}">빼기</button></div>
     </div>
     <div class="grid">
       ${optionalSelect('업무 유형', 'work_type', it.work_type, workTypes)}
@@ -416,11 +418,10 @@ export function weeklyPage({ date, weekStart, items, tasks, workTypes, saved }) 
       ${kind === '전주 실적' ? field('산출물', 'output', it.output) : ''}
       ${field('비고', 'note', it.note)}
     </div>
-    <div class="row"><button class="btn">저장</button></div>
   </form>
-  <form method="post" action="/weekly/${it.id}/delete" style="margin-top:9px">
+  <!-- 빼기 단추는 제목 줄에 있고, 폼은 저장 폼 밖에 둔다. 폼은 겹칠 수 없다. -->
+  <form id="del-${it.id}" method="post" action="/weekly/${it.id}/delete">
     <input type="hidden" name="date" value="${date}">
-    <button class="btn danger sm">빼기</button>
   </form>
 </div>`
   }
@@ -491,6 +492,7 @@ ${
                 formnovalidate${i === 0 ? ' disabled' : ''}>↑</button>
         <button class="btn ghost sm" formaction="/series/move" name="move" value="${esc(s.name)}:1"
                 formnovalidate${i === series.length - 1 ? ' disabled' : ''}>↓</button>
+        <button class="btn plain sm">저장</button>
         <button class="btn danger sm" formaction="/series/delete" name="remove" value="${esc(s.name)}"
                 formnovalidate
                 onclick="return confirm('${esc(s.name)} 을(를) 지울까요? 보고서 막대에서 빠집니다.')">삭제</button>
@@ -499,7 +501,6 @@ ${
     <div class="grid">${stageInputs(s)}</div>
     <p class="count" style="margin:0">${s.updated_at ? s.updated_at.slice(0, 10) + ' 갱신' : '아직 저장 전'}</p>
   </div>`).join('')}
-  <div class="row" style="margin-bottom:18px"><button class="btn">저장</button></div>
 </form>`
     : '<p class="empty">시리즈가 없습니다. 아래 [시리즈 추가]에서 넣으세요.</p>'
 }
