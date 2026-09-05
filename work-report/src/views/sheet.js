@@ -22,6 +22,7 @@ export const sheetBox = (id, heading, extra) => `
     <h2>${heading}</h2>
     <div class="row">
       <span class="count" data-count="${id}">0건</span>${extra || ''}
+      <button type="button" class="btn ghost sm" data-save-now="${id}">저장</button>
       <span class="shsave" data-save="${id}"><span class="dot"></span><span class="txt">저장됨</span></span>
     </div>
   </div>
@@ -99,6 +100,9 @@ export const SHEET_CSS = `
 .sheet tr.ghost td.rn{color:var(--accent); font-size:14px}
 .sheet tr.ghost td.cell .v{color:var(--text-3)}
 .sheet .dn{color:var(--text-3); font-size:11px; margin-left:5px}
+/* 눌러도 상자가 스스로 바뀌지 않게 한다. 칸이 눌린 것으로 받아 값을 뒤집는다. */
+.sheet .shchk{width:15px; height:15px; padding:0; margin:0; border-radius:4px;
+  accent-color:var(--accent); pointer-events:none; vertical-align:middle}
 
 .sheet .shbarwrap{display:flex; align-items:center; gap:6px; padding:0 9px}
 .sheet .shtrack{display:block; flex:1; height:4px; border-radius:2px; background:var(--sep-soft);
@@ -181,6 +185,10 @@ function esc (s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
+/** 글자를 받는 칸인가. 표 바깥의 칸에 친 글자를 표가 가로채면 안 된다. */
+function isField (n) {
+  return !!n && !!n.tagName && /^(INPUT|SELECT|TEXTAREA)$/.test(n.tagName)
+}
 function toast (m) {
   var t = document.getElementById('toast'); if (!t) return
   t.className = 'toast ok'; t.textContent = ''
@@ -219,9 +227,8 @@ function fmtDate (v) {
 function cellHTML (col, row) {
   var v = row[col.k]
   if (col.t === 'pill') return '<span class="v">' + (v ? pill(v) : '<span class="ph">—</span>') + '</span>'
-  if (col.t === 'check') return '<span class="v">' +
-    (v ? '<span style="color:var(--accent);font-weight:700">✓</span>' : '<span class="ph">·</span>') +
-    '</span>'
+  if (col.t === 'check') return '<span class="v"><input type="checkbox" class="shchk"' +
+    (v ? ' checked' : '') + ' tabindex="-1" aria-label="' + esc(col.l) + '"></span>'
   if (col.t === 'pct') {
     if (v === '' || v === null || v === undefined) return '<span class="v ph">—</span>'
     return '<span class="shbarwrap"><span class="shtrack"><span class="shfill" style="width:' +
@@ -231,7 +238,7 @@ function cellHTML (col, row) {
   if (col.t === 'date') return '<span class="v' + (v ? '' : ' ph') + '">' +
     (v ? fmtDate(v) : '—') + '</span>'
   if (col.t === 'multi') {
-    if (!v) return '<span class="v ph">—</span>'
+    if (!v) return '<span class="v"></span>'
     var ls = String(v).split('\\n').filter(function (x) { return x.trim() })
     return '<span class="v">' + esc(ls[0]) +
       (ls.length > 1 ? ' <span class="ph">+' + (ls.length - 1) + '줄</span>' : '') + '</span>'
@@ -298,6 +305,14 @@ function fillPicker (id) {
   box.querySelector('[data-addpick]').disabled = !pool.length
 }
 
+/** [저장] — 고치던 칸을 매듭짓고 그 표의 줄을 모두 다시 보낸다. */
+function saveAll (id) {
+  var g = G[id]
+  if (edit && edit.id === id) commit()
+  if (!g.rows.length) { mark(id, '', '저장됨'); return }
+  g.rows.forEach(function (row) { row._v = (row._v || 0) + 1; save(id, row) })
+}
+
 /** 카드에서 넣은 업무를 표 맨 아래에 한 줄로 꽂는다. */
 function addRow (id, seed) {
   var g = G[id]
@@ -316,6 +331,8 @@ function addRow (id, seed) {
 }
 
 document.addEventListener('click', function (ev) {
+  var sv = ev.target.closest('[data-save-now]')
+  if (sv) { saveAll(sv.getAttribute('data-save-now')); return }
   var b = ev.target.closest('[data-addpick],[data-addfree]')
   if (!b || b.disabled) return
   var box = b.closest('[data-add]'), id = box.getAttribute('data-add')
@@ -390,6 +407,9 @@ function save (id, row) {
   // 한꺼번에 붙여넣으면 실제로 이렇게 된다.)
   if (row._busy) { row._again = true; return }
   row._busy = true
+  // 보낸 뒤에도 사람이 계속 고친다. 답이 오는 사이에 값이 바뀌었으면 그 답은
+  // 이미 낡은 것이므로 덮어쓰면 안 된다. 그래서 판 번호를 붙여 보낸다.
+  var sent = row._v || 0, wasNew = !row.id
   mark(id, 'busy', '저장 중…')
   chain = chain.then(function () {
     var body = {date: D.date, kind: g.kind || '', id: row.id || ''}
@@ -405,7 +425,22 @@ function save (id, row) {
   }).then(function (out) {
     if (out.row) {
       var fresh = out.row
-      Object.keys(fresh).forEach(function (k) { row[k] = fresh[k] })
+      if ((row._v || 0) === sent) {
+        // 그 사이 손대지 않았다 — 서버가 정한 값(가져온 직전 기록 같은)을 그대로 받는다.
+        Object.keys(fresh).forEach(function (k) { row[k] = fresh[k] })
+      } else if (wasNew) {
+        // 줄을 만드는 사이에 이어서 적었다 — 적은 것을 살리고 빈 칸만 채운다.
+        row.id = fresh.id
+        Object.keys(fresh).forEach(function (k) {
+          if (k === 'id') return
+          var v = row[k]
+          if (v === '' || v === null || v === undefined || v === false) row[k] = fresh[k]
+        })
+      } else {
+        // 고치는 사이에 답이 왔다 — 화면에 적힌 것이 최신이다. id만 받는다.
+        row.id = fresh.id
+        row.prev_detail = fresh.prev_detail
+      }
       draw(id); paint()
     }
     mark(id, '', '저장됨')
@@ -532,6 +567,7 @@ function put (id, r, c, val) {
       })
     }
   }
+  row._v = (row._v || 0) + 1
   draw(id); paint(); save(id, row)
 }
 
@@ -696,6 +732,8 @@ document.addEventListener('keydown', function (ev) {
   }
 
   if (!sel || meta) return
+  // 카드의 고르는 칸·직접 입력 칸에서 친 글자는 그 칸의 것이다. 표로 넘기지 않는다.
+  if (isField(ev.target)) return
 
   if (ev.altKey && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) {
     ev.preventDefault(); moveRow(sel.id, sel.r, ev.key === 'ArrowUp' ? -1 : 1); return
@@ -729,7 +767,7 @@ document.addEventListener('keydown', function (ev) {
 
 /* 엑셀에서 그대로 붙여넣기 */
 document.addEventListener('paste', function (ev) {
-  if (!sel || edit) return
+  if (!sel || edit || isField(ev.target)) return
   var txt = (ev.clipboardData || window.clipboardData).getData('text')
   if (!txt) return
   ev.preventDefault()
