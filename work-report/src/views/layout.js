@@ -103,8 +103,9 @@ nav.top .right{margin-left:auto}
   padding:18px 20px; margin-bottom:16px}
 .chead{display:flex; align-items:center; justify-content:space-between;
   gap:12px; flex-wrap:wrap; margin-bottom:14px}
-.chead h2{margin:0; font-size:16px; font-weight:600; letter-spacing:-.018em}
+.chead h2{margin:0; font-size:17px; font-weight:700; letter-spacing:-.02em}
 .count{font-size:13px; color:var(--text-3)}
+.chead h2 .count{font-weight:400; letter-spacing:0; margin-left:8px}
 
 .row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
 /* 라벨이 위에 붙은 칸과 버튼을 한 줄에 둘 때는 아래를 맞춰야 나란히 보인다. */
@@ -219,9 +220,10 @@ nav.top .right{margin-left:auto}
   font-variant-numeric:tabular-nums; color:var(--text)}
 .bnum ul{margin:6px 0 0; padding:0; list-style:none;
   display:flex; flex-direction:column; gap:5px}
-.bnum li{font-size:12.5px; line-height:1.45; color:var(--text-2);
-  word-break:keep-all; padding-left:10px; position:relative}
-.bnum li::before{content:'·'; position:absolute; left:1px; color:var(--text-3)}
+.bnum li{font-size:12.5px; line-height:1.5; color:var(--text-2);
+  word-break:keep-all; padding-left:13px; position:relative}
+.bnum li::before{content:'·'; position:absolute; left:0; top:-.18em;
+  font-size:20px; line-height:1; color:var(--text-3)}
 .bnum li.more{color:var(--text-3)}
 .bnum li.more::before{content:''}
 iframe.brief{width:100%; height:82vh; min-height:540px; border:0;

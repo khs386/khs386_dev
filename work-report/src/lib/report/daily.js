@@ -26,7 +26,7 @@ function detailRow(text, first) {
   const margin = first ? '8px 0 2px' : '0 0 2px'
   return (
     `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:${margin};padding-left:8px;">` +
-    `<tr><td width="14" style="font-size:15px;color:#555;vertical-align:top;line-height:1.7;white-space:nowrap;padding-right:4px;">·</td>` +
+    `<tr><td width="16" style="font-size:15px;color:#888;vertical-align:top;line-height:1.7;white-space:nowrap;padding-right:6px;">\u2022</td>` +
     `<td style="font-size:15px;color:#555;line-height:1.7;">${escapeHtml(text)}</td></tr></table>`
   )
 }

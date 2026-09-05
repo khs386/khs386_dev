@@ -184,18 +184,19 @@ function briefCard(brief, today) {
   }
   return `
 <div class="card">
-  <div class="chead"><h2>모닝브리프</h2>
-    <span class="count">${kstTime(brief.created_at)} 도착</span></div>
+  <div class="chead">
+    <h2>모닝브리프 <span class="count">${kstTime(brief.created_at)} 도착</span></h2>
+    <div class="row">
+      <a class="btn" href="/brief">모닝브리프 열기</a>
+      <a class="btn ghost" href="/brief/raw?date=${brief.brief_date}"
+         target="_blank" rel="noreferrer">새 탭에서 크게 보기</a>
+    </div>
+  </div>
   ${brief.headline ? `<p class="bhead">${esc(brief.headline)}</p>` : ''}
   <div class="brow">
     ${briefCount(brief.events, '오늘 일정', brief.items?.events)}
     ${briefCount(brief.todo, '해야 할 일', brief.items?.todo)}
     ${briefCount(brief.done, '정리된 일', brief.items?.done)}
-  </div>
-  <div class="row" style="margin-top:14px">
-    <a class="btn" href="/brief">모닝브리프 열기</a>
-    <a class="btn ghost" href="/brief/raw?date=${brief.brief_date}"
-       target="_blank" rel="noreferrer">새 탭에서 크게 보기</a>
   </div>
 </div>`
 }

@@ -530,7 +530,13 @@ app.get('/brief', async (c) => {
  * 거부했습니다"만 뜬다. 새 탭에서 열리게 하면 정상으로 열린다.
  */
 function openLinksInNewTab(html) {
-  const base = '<base target="_blank">'
+  const base =
+    '<base target="_blank">' +
+    // [리마인드 초안 잡기] 버튼은 파란 바탕인데, 만드는 쪽에서 글자색을 빠뜨리면
+    // 브라우저 기본색(검정)과 밑줄이 나와 읽히지 않는다. 그 링크 주소는 늘 같으니
+    // 주소로 집어서 바로잡는다. 어떻게 꾸며져 있든 이 한 곳만 손댄다.
+    '<style>a[href^="https://claude.ai/new"]' +
+    '{color:#ffffff !important;text-decoration:none !important}</style>'
   const head = /<head[^>]*>/i.exec(html)
   if (head) return html.slice(0, head.index + head[0].length) + base + html.slice(head.index + head[0].length)
   return base + html
