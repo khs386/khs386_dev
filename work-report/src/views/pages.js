@@ -23,10 +23,10 @@ export function todayPage({ today, logs, weekly, series, soon, brief }) {
   // 주간 항목이 아예 없을 때와, 지난주 것만 있고 이번 주가 빈 때는 말이 다르다.
   const weekNote =
     weekly.prev + weekly.plan === 0
-      ? '<p class="empty">이번 주 항목이 없습니다. <a href="/weekly">주간업무</a>에서 채우세요.</p>'
+      ? '<p class="empty">이번 주 항목이 없습니다. <a href="/weekly">주간업무</a>에서 입력하세요.</p>'
       : weekly.plan
         ? ''
-        : '<p class="count">금주 예정 업무가 없습니다. <a href="/weekly">주간업무</a>에서 채우세요.</p>'
+        : '<p class="count">금주 예정 업무가 없습니다. <a href="/weekly">주간업무</a>에서 입력하세요.</p>'
   const body = `
 <div class="head">
   <div><h1>데일리 브리프</h1><p>${koreanDate(today)} · ${koreanWeek(today)}</p></div>
@@ -52,7 +52,7 @@ ${briefCard(brief, today)}
           <span class="c">${tag(l.progress === null ? '진행률 없음' : l.progress + '%')}</span>
           <span class="c">${ddayTag(dday(l.deadline, today))}</span>
         </div>`).join('')
-      : `<p class="empty">아직 기록이 없습니다. <a href="/daily">일일업무</a>에서 오늘 진행한 업무를 넣으세요.</p>`
+      : `<p class="empty">아직 기록이 없습니다. <a href="/daily">일일업무</a>에서 오늘 진행한 업무를 입력하세요.</p>`
   }
 </div>
 
@@ -587,7 +587,7 @@ ${
     <p class="count" style="margin:0">${s.updated_at ? s.updated_at.slice(0, 10) + ' 갱신' : '아직 저장 전'}</p>
   </div>`).join('')}
 </form>`
-    : '<p class="empty">시리즈가 없습니다. 아래 [시리즈 추가]에서 넣으세요.</p>'
+    : '<p class="empty">시리즈가 없습니다. 아래 [시리즈 추가]에서 입력하세요.</p>'
 }
 
 <div class="card">
