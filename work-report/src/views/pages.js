@@ -62,7 +62,7 @@ ${briefCard(brief, today)}
   <!-- 채울 말이 없으면 제목 줄 아래 여백까지 지운다. 빈 자리만 남기지 않는다. -->
   <div class="chead"${weekNote || plan.length ? '' : ' style="margin-bottom:0"'}>
     <h2>이번 주 현황</h2>
-    <span class="count">전주 실적 ${weekly.prev}건 · 금주 예정 ${weekly.plan}건</span></div>
+    <span class="count">금주 예정 ${weekly.plan}건</span></div>
   ${weekNote}
   ${
     // 금주 예정만 늘어놓는다. 마감이 가까운 업무와 같은 모양이라 눈이 익다.
