@@ -28,13 +28,10 @@ const notice = (msg, kind) =>
 export function todayPage({ today, logs, weekly, series, soon, brief }) {
   const stale = series.filter((s) => !s.updated_at)
   const plan = weekly.planItems || []
-  // 주간 항목이 아예 없을 때와, 지난주 것만 있고 이번 주가 빈 때는 말이 다르다.
-  const weekNote =
-    weekly.prev + weekly.plan === 0
-      ? '<p class="empty">이번 주 항목이 없습니다. <a href="/weekly">주간업무</a>에서 입력하세요.</p>'
-      : weekly.plan
-        ? ''
-        : '<p class="count">금주 예정 업무가 없습니다. <a href="/weekly">주간업무</a>에서 입력하세요.</p>'
+  const weekNote = plan.length
+    ? ''
+    : `<p class="empty">지난 주 보고서에 적은 금주 예정이 없습니다.
+       <a href="/weekly?date=${weekly.planWeek}">주간업무</a>에서 입력하세요.</p>`
   const body = `
 <div class="head">
   <div><h1>데일리 브리프</h1><p>${koreanDate(today)} · ${koreanWeek(today)}</p></div>
@@ -66,12 +63,14 @@ ${briefCard(brief, today)}
 
 <div class="card">
   <!-- 채울 말이 없으면 제목 줄 아래 여백까지 지운다. 빈 자리만 남기지 않는다. -->
-  <div class="chead"${weekNote || plan.length ? '' : ' style="margin-bottom:0"'}>
-    <h2>이번 주 현황</h2>
-    <span class="count">금주 예정 ${weekly.plan}건</span></div>
+  <div class="chead">
+    <h2>이번 주 현황<span class="count">지난 주에 적은 금주 예정</span></h2>
+    <span class="count">${plan.length}건</span></div>
   ${weekNote}
   ${
-    // 금주 예정만 늘어놓는다. 마감이 가까운 업무와 같은 모양이라 눈이 익다.
+    // 이번 주에 할 일은 지난 주 금요일 보고서의 [금주 예정]에 적혀 있다.
+    // 이번 주 칸은 이번 주 금요일에나 채워지므로 월요일 아침에는 늘 비어 있다.
+    // 마감이 가까운 업무와 같은 모양이라 눈이 익다.
     plan.map((w) => {
       const d = dday(w.due_date, today)
       return `<div class="item cols due">

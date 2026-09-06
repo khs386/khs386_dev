@@ -30,6 +30,13 @@ const back = (c, path, msg) =>
 
 const dateOr = (v, fallback) => (/^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : fallback)
 
+/** 주 시작 날짜에서 한 주 앞. '2026-09-07' → '2026-08-31' */
+function prevWeekStart(ws) {
+  const d = new Date(`${ws}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - 7)
+  return d.toISOString().slice(0, 10)
+}
+
 /* ── 로그인 ─────────────────────────────────────────────── */
 
 // 아이콘과 약관 페이지는 로그인 없이 열린다.
@@ -78,9 +85,13 @@ app.use('*', async (c, next) => {
 
 app.get('/', async (c) => {
   const today = todayKST()
-  const [logs, weekly, series, tasks, brief] = await Promise.all([
+  // 이번 주에 할 일은 지난 주 [금주 예정]에 적혀 있다. 주간 보고서를 금요일에
+  // 쓰기 때문이다 — 이번 주 칸은 이번 주 금요일에나 채워지므로, 이번 주 것을
+  // 보면 월요일 아침에는 늘 비어 있다.
+  const planWeek = prevWeekStart(weekStart(today))
+  const [logs, planned, series, tasks, brief] = await Promise.all([
     db.listLogs(c.env.DB, today),
-    db.listWeekly(c.env.DB, weekStart(today)),
+    db.listWeekly(c.env.DB, planWeek),
     db.listSeries(c.env.DB),
     db.listTasks(c.env.DB),
     db.getBrief(c.env.DB, today),
@@ -89,11 +100,10 @@ app.get('/', async (c) => {
   return html(c, todayPage({
     today, logs, series, soon, brief,
     weekly: {
-      prev: weekly.filter((w) => w.kind === '전주 실적').length,
-      plan: weekly.filter((w) => w.kind === '금주 예정').length,
+      planWeek,
       // 아침에 훑는 화면이라 앞으로 할 일만 싣는다. 전주 실적은 주간 보고서를
       // 만들 때 /weekly에서 본다.
-      planItems: weekly.filter((w) => w.kind === '금주 예정'),
+      planItems: planned.filter((w) => w.kind === '금주 예정'),
     },
   }))
 })
@@ -346,11 +356,8 @@ app.post('/weekly/carry-over', async (c) => {
   const form = await c.req.formData()
   const date = dateOr(form.get('date'), todayKST())
   const ws = weekStart(date)
-  const prevWs = new Date(`${ws}T00:00:00Z`)
-  prevWs.setUTCDate(prevWs.getUTCDate() - 7)
-
   const [lastWeek, thisWeek] = await Promise.all([
-    db.listWeekly(c.env.DB, prevWs.toISOString().slice(0, 10)),
+    db.listWeekly(c.env.DB, prevWeekStart(ws)),
     db.listWeekly(c.env.DB, ws),
   ])
   const plans = lastWeek.filter((i) => i.kind === '금주 예정')
