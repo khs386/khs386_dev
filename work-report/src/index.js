@@ -8,6 +8,7 @@ import {
   todayKST, skipReason, generateReport, filenameFor,
 } from './lib/reports.js'
 import { weekStart } from './lib/report/format.js'
+import { soonTasks } from './lib/tasks.js'
 import {
   monthOr, monthOf, monthStart, shiftMonth, koreanMonth, summarize, missingRecurring,
 } from './lib/cards.js'
@@ -84,7 +85,7 @@ app.get('/', async (c) => {
     db.listTasks(c.env.DB),
     db.getBrief(c.env.DB, today),
   ])
-  const soon = tasks.filter((t) => t.deadline).slice(0, 5)
+  const soon = soonTasks(tasks, today)
   return html(c, todayPage({
     today, logs, series, soon, brief,
     weekly: {

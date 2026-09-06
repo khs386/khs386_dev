@@ -4,15 +4,21 @@ import { SHEET_JS, SHEET_HELP, sheetBox, jsonBlock } from './sheet.js'
 import { dday, koreanDate, koreanWeek, barHeight } from '../lib/report/format.js'
 import { SERIES_COLOR, displayStatus } from '../lib/report/colors.js'
 import { statusTint, priorityTint, ddayTint } from './ui.js'
+import { SOON_DAYS } from '../lib/tasks.js'
 
 
 export const STATUSES = ['예정', '시작', '진행', '완료', '보류']
 export const PRIORITIES = ['높음', '중간', '낮음']
 
+/** 마감까지 남은 날. 지나갔으면 D+로 적는다 — D--2처럼 보이면 안 된다. */
+const ddayText = (d) => (d < 0 ? `D+${-d}` : `D-${d}`)
+const ddayPill = (d) =>
+  `<span class="pill" style="background:${ddayTint(d)}">${ddayText(d)}</span>`
+
 const ddayTag = (d) =>
   d === null
     ? '<span class="tag">마감 없음</span>'
-    : `<span class="dday" style="color:${ddayTint(d)}">D-${d}</span>`
+    : `<span class="dday" style="color:${ddayTint(d)}">${ddayText(d)}</span>`
 
 const notice = (msg, kind) =>
   msg ? `<p class="note${kind ? ' ' + kind : ''}">${msg}</p>` : ''
@@ -71,26 +77,20 @@ ${briefCard(brief, today)}
       return `<div class="item cols due">
         <span class="t">${esc(w.title)}</span>
         <span class="c">${w.due_date ? tag(w.due_date) : ''}</span>
-        <span class="c">${
-          d === null ? '' : `<span class="pill" style="background:${ddayTint(d)}">D-${d}</span>`
-        }</span>
+        <span class="c">${d === null ? '' : ddayPill(d)}</span>
       </div>`
     }).join('')
   }
 </div>
 
 <div class="card">
-  <div class="chead"><h2>마감이 가까운 업무</h2></div>
+  <div class="chead"><h2>마감이 가까운 업무<span class="count">D-${SOON_DAYS} 이내</span></h2></div>
   ${
     soon.length
-      ? soon.map((t) => {
-          const d = dday(t.deadline, today)
-          return `<div class="item cols due"><span class="t">${esc(t.title)}</span>
+      ? soon.map((t) => `<div class="item cols due"><span class="t">${esc(t.title)}</span>
             <span class="c">${tag(t.deadline)}</span>
-            <span class="c"><span class="pill"
-              style="background:${ddayTint(d)}">D-${d}</span></span></div>`
-        }).join('')
-      : '<p class="empty">마감이 정해진 업무가 없습니다.</p>'
+            <span class="c">${ddayPill(t.d)}</span></div>`).join('')
+      : `<p class="empty">${SOON_DAYS}일 안에 마감인 업무가 없습니다.</p>`
   }
 </div>`
   return page({ title: '데일리 브리프', path: '/', body })
