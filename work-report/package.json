@@ -22,7 +22,11 @@
     "db:migrate7": "wrangler d1 execute work-report --remote --file=./migrations/0007_work_type_series.sql",
     "db:migrate7:local": "wrangler d1 execute work-report --local --file=./migrations/0007_work_type_series.sql",
     "db:link": "wrangler d1 execute work-report --remote --file=./migrations/0008_link_work_type_series.sql",
-    "db:link:local": "wrangler d1 execute work-report --local --file=./migrations/0008_link_work_type_series.sql"
+    "db:link:local": "wrangler d1 execute work-report --local --file=./migrations/0008_link_work_type_series.sql",
+    "db:cards": "wrangler d1 execute work-report --remote --file=./migrations/0009_card_expenses.sql",
+    "db:cards:local": "wrangler d1 execute work-report --local --file=./migrations/0009_card_expenses.sql",
+    "db:cards-seed": "wrangler d1 execute work-report --remote --file=./migrations/0010_card_seed.sql",
+    "db:cards-seed:local": "wrangler d1 execute work-report --local --file=./migrations/0010_card_seed.sql"
   },
   "dependencies": {
     "hono": "^4.6.0"

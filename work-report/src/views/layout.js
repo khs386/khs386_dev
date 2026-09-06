@@ -22,6 +22,7 @@ const NAV = [
   ['/weekly', '주간업무'],
   ['/series', '개발현황'],
   ['/reports', '보고서'],
+  ['/cards', '법인카드'],
 ]
 
 
@@ -155,6 +156,16 @@ nav.top .right{margin-left:auto}
 @media (max-width:840px){
   .grid.one-line{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 }
+/* 법인카드를 넣는 칸 — 표의 열 순서 그대로 두 줄에 나눠 놓는다. 윗줄은
+   사용일·세부 내역·사용자·사용처·금액, 아랫줄은 처리 계정·정산상태·비고와 단추다. */
+.grid.cardadd{grid-template-columns:148px 1.7fr 108px 1.3fr 130px; margin-top:12px;
+  margin-bottom:0}
+.grid.cardadd .span2{grid-column:span 2}
+.grid.cardadd .addbtn{align-self:end; height:38px}
+@media (max-width:840px){
+  .grid.cardadd{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .grid.cardadd .span2{grid-column:auto}
+}
 
 .fld{display:flex; flex-direction:column; gap:5px}
 /* 이름표 오른쪽 끝에 거는 글자 단추. 상자 위 한 줄을 이름표와 나눠 쓴다. */
@@ -266,6 +277,10 @@ nav.top .right{margin-left:auto}
   font-size:20px; line-height:1; color:var(--text-3)}
 .bnum li.more{color:var(--text-3)}
 .bnum li.more::before{content:''}
+/* 계정별 소계. 옆 칸의 합계와 같이 읽는 숫자라 딱지 글자를 키워 놓았다. */
+.accs{display:flex; gap:7px; flex-wrap:wrap; margin-top:6px}
+.accs .tag{font-size:14px; padding:4px 12px; font-variant-numeric:tabular-nums}
+.accs .tag b{font-weight:600; color:var(--text); margin-left:2px}
 iframe.brief{width:100%; height:70vh; min-height:420px; border:0;
   background:#fff; display:block; overflow:hidden}
 /* 보고서 미리보기. 액자는 자리를 지키고, 그 안의 문서만 줄여 넣는다. */

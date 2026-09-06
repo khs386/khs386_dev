@@ -8,12 +8,13 @@ import {
   todayKST, skipReason, generateReport, filenameFor,
 } from './lib/reports.js'
 import { weekStart } from './lib/report/format.js'
+import { monthOr, monthOf, monthStart, shiftMonth, koreanMonth, summarize } from './lib/cards.js'
 import { STAGES } from './lib/series.js'
 import { loginPage, FAVICON } from './views/layout.js'
 import { privacyPage, termsPage } from './views/legal.js'
 import {
-  todayPage, tasksPage, dailyPage, weeklyPage, seriesPage, reportsPage, briefPage,
-  dailyRow, weeklyRow,
+  todayPage, tasksPage, dailyPage, weeklyPage, seriesPage, reportsPage, briefPage, cardsPage,
+  dailyRow, weeklyRow, cardRow,
 } from './views/pages.js'
 
 const app = new Hono()
@@ -432,6 +433,115 @@ app.post('/series/move', async (c) => {
   const [name, dir] = String(form.get('move') || '').split(':')
   if (name) await db.moveSeries(c.env.DB, name, Number(dir) || 1)
   return c.redirect('/series')
+})
+
+/* ── 법인카드 ───────────────────────────────────────────── */
+
+/** 보고 있는 달 안의 날짜를 고른다. 이번 달이면 오늘, 아니면 그 달 첫날. */
+function dayInMonth(month, today) {
+  return monthOf(today) === month ? today : monthStart(month)
+}
+
+app.get('/cards', async (c) => {
+  const today = todayKST()
+  const month = monthOr(c.req.query('month'), monthOf(today))
+  const [rows, accounts, users, settles, presets] = await Promise.all([
+    db.listExpenses(c.env.DB, month),
+    db.listCardAccounts(c.env.DB),
+    db.listCardUsers(c.env.DB),
+    db.listCardSettles(c.env.DB),
+    db.listCardPresets(c.env.DB),
+  ])
+  return html(c, cardsPage({
+    month,
+    monthLabel: koreanMonth(month),
+    prev: shiftMonth(month, -1),
+    next: shiftMonth(month, 1),
+    rows,
+    summary: summarize(rows, settles.filter((s) => s.done).map((s) => s.name)),
+    accounts, users, settles, presets,
+    defaultDay: dayInMonth(month, today),
+  }))
+})
+
+app.post('/api/cards/row', async (c) => {
+  const b = await c.req.json().catch(() => ({}))
+  const month = monthOr(b.date, monthOf(todayKST()))
+  const title = String(b.title || '').trim()
+  let id = String(b.id || '')
+
+  if (!id) {
+    // 금액 없는 지출은 정산에 쓸 수 없다. 화면도 그때까지는 보내지 않는다.
+    if (!title) return c.json({ ok: false, error: '세부 내역이 없습니다.' }, 400)
+    id = await db.createExpense(c.env.DB, {
+      used_on: dateOr(b.used_on, dayInMonth(month, todayKST())),
+      title,
+      spender: b.spender, merchant: b.merchant, amount: b.amount,
+      account: b.account, settle: b.settle, note: b.note,
+    })
+  }
+
+  const cur = await db.getExpense(c.env.DB, id)
+  if (!cur) return c.json({ ok: false, error: '없는 줄입니다.' }, 404)
+  await db.saveExpense(c.env.DB, id, {
+    used_on: dateOr(pick(b.used_on, cur.used_on), cur.used_on),
+    title: title || cur.title,
+    spender: pick(b.spender, cur.spender),
+    merchant: pick(b.merchant, cur.merchant),
+    // 0원은 값이 없는 것이 아니라 0이다. pick에 맡기면 지난 값으로 되돌아간다.
+    amount: b.amount === '' || b.amount === undefined ? cur.amount : Number(b.amount) || 0,
+    account: pick(b.account, cur.account),
+    settle: pick(b.settle, cur.settle) || '지출품의 예정',
+    note: b.note === undefined ? cur.note : b.note,
+  })
+
+  return c.json({ ok: true, row: cardRow(await db.getExpense(c.env.DB, id)) })
+})
+
+app.post('/api/cards/delete', async (c) => {
+  const b = await c.req.json().catch(() => ({}))
+  if (!b.id) return c.json({ ok: false }, 400)
+  await db.deleteExpense(c.env.DB, b.id)
+  return c.json({ ok: true })
+})
+
+/* 항목 관리 — 처리 계정·사용자·정산상태 */
+
+app.post('/cards/items', async (c) => {
+  const form = await c.req.formData()
+  const kind = String(form.get('kind') || '')
+  const froms = form.getAll('from')
+  const tos = form.getAll('to')
+  const colors = form.getAll('color')
+  // 체크 안 한 상자는 아예 오지 않는다. 온 이름만 '정산 끝'으로 본다.
+  const done = new Set(form.getAll('done').map(String))
+  const { error, changed } = await db.saveCardItems(
+    c.env.DB,
+    kind,
+    froms.map((from, i) => ({ from, to: tos[i], color: colors[i], done: done.has(String(from)) }))
+  )
+  if (error) return back(c, '/cards', error)
+  return back(c, '/cards', changed ? `${changed}개를 고쳤습니다.` : '바뀐 것이 없습니다.')
+})
+
+app.post('/cards/items/new', async (c) => {
+  const form = await c.req.formData()
+  const { error, name } = await db.createCardItem(c.env.DB, form.get('kind'), form.get('name'))
+  return back(c, '/cards', error || `"${name}"을(를) 추가했습니다.`)
+})
+
+app.post('/cards/items/delete', async (c) => {
+  const form = await c.req.formData()
+  const [kind, name] = String(form.get('remove') || '').split(':')
+  if (kind && name) await db.deleteCardItem(c.env.DB, kind, name)
+  return back(c, '/cards', name ? `"${name}"을(를) 지웠습니다.` : '')
+})
+
+app.post('/cards/items/move', async (c) => {
+  const form = await c.req.formData()
+  const [kind, name, dir] = String(form.get('move') || '').split(':')
+  if (kind && name) await db.moveCardItem(c.env.DB, kind, name, Number(dir) || 1)
+  return c.redirect('/cards')
 })
 
 /* ── 보고서 ─────────────────────────────────────────────── */

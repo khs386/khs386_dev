@@ -558,3 +558,178 @@ export const listBriefs = (db, limit = 30) =>
     .bind(limit)
     .all()
     .then((r) => r.results || [])
+
+/* ── 법인카드 ──────────────────────────────────────────── */
+
+/**
+ * 한 달치 사용 내역. 최근에 쓴 것이 위로 온다.
+ *
+ * 같은 날 여러 건이면 나중에 넣은 것을 아래에 둔다. 카드 명세서를 위에서부터
+ * 옮겨 적는 순서 그대로 쌓이게 하려는 것이다.
+ */
+export async function listExpenses(db, month) {
+  const { results } = await db
+    .prepare(
+      `select * from card_expenses
+        where used_on >= ? and used_on <= ?
+        order by used_on desc, created_at`
+    )
+    .bind(`${month}-01`, `${month}-31`)
+    .all()
+  return results || []
+}
+
+export async function getExpense(db, id) {
+  return db.prepare('select * from card_expenses where id = ?').bind(id).first()
+}
+
+export async function createExpense(db, f) {
+  const id = uuid()
+  await db
+    .prepare(
+      `insert into card_expenses (id, used_on, title, spender, merchant, amount, account, settle, note)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .bind(id, f.used_on, String(f.title || '').trim(), str(f.spender), str(f.merchant),
+          Number(f.amount) || 0, str(f.account), f.settle || '지출품의 예정', f.note || '')
+    .run()
+  return id
+}
+
+export async function saveExpense(db, id, f) {
+  await db
+    .prepare(
+      `update card_expenses set used_on = ?, title = ?, spender = ?, merchant = ?,
+              amount = ?, account = ?, settle = ?, note = ? where id = ?`
+    )
+    .bind(f.used_on, String(f.title || '').trim(), str(f.spender), str(f.merchant),
+          Number(f.amount) || 0, str(f.account), f.settle || '지출품의 예정', f.note || '', id)
+    .run()
+}
+
+export async function deleteExpense(db, id) {
+  await db.prepare('delete from card_expenses where id = ?').bind(id).run()
+}
+
+/* 고르는 칸에 나오는 값들 */
+
+const listNamed = (db, table) =>
+  db
+    .prepare(`select * from ${table} order by sort_order, name`)
+    .all()
+    .then((r) => r.results || [])
+
+export const listCardAccounts = (db) => listNamed(db, 'card_accounts')
+export const listCardUsers = (db) => listNamed(db, 'card_users')
+export const listCardSettles = (db) =>
+  listNamed(db, 'card_settles').then((rows) => rows.map((r) => ({ ...r, done: !!r.done })))
+
+export const listCardPresets = (db) =>
+  db
+    .prepare('select * from card_presets order by sort_order, title')
+    .all()
+    .then((r) => r.results || [])
+
+/** 항목 관리에서 쓰는 세 표는 이름이 열쇠라 손보는 방식이 같다. */
+const CARD_LISTS = {
+  account: { table: 'card_accounts', label: '처리 계정', used: 'account' },
+  user: { table: 'card_users', label: '사용자', used: 'spender' },
+  settle: { table: 'card_settles', label: '정산상태', used: 'settle' },
+}
+
+export const cardList = (kind) => CARD_LISTS[kind] || null
+
+export async function createCardItem(db, kind, name) {
+  const t = CARD_LISTS[kind]
+  if (!t) return { error: '알 수 없는 항목입니다.' }
+  const clean = String(name || '').trim()
+  if (!clean) return { error: `${t.label} 이름을 입력해 주세요.` }
+  const dup = await db.prepare(`select name from ${t.table} where name = ?`).bind(clean).first()
+  if (dup) return { error: `"${clean}" 은(는) 이미 있습니다.` }
+  const last = await db.prepare(`select max(sort_order) as m from ${t.table}`).first()
+  const order = (last?.m || 0) + 1
+  await db
+    .prepare(
+      kind === 'settle'
+        ? `insert into ${t.table} (name, color, done, sort_order) values (?, '회색', 0, ?)`
+        : `insert into ${t.table} (name, sort_order) values (?, ?)`
+    )
+    .bind(clean, order)
+    .run()
+  return { ok: true, name: clean }
+}
+
+/**
+ * 이름·색·'정산 끝'을 한꺼번에 고친다.
+ *
+ * 이름을 바꾸면 그 값을 쓰던 지출도 함께 따라간다. 업무 유형을 고칠 때와
+ * 같은 규칙이다 — 이름만 바꿨는데 지난 기록이 떨어져 나가면 안 된다.
+ */
+export async function saveCardItems(db, kind, rows) {
+  const t = CARD_LISTS[kind]
+  if (!t) return { error: '알 수 없는 항목입니다.' }
+  let changed = 0
+  for (const { from, to, color, done } of rows) {
+    const next = String(to || '').trim()
+    if (!next) continue
+    const cur = await db.prepare(`select * from ${t.table} where name = ?`).bind(from).first()
+    if (!cur) continue
+    if (next !== from) {
+      const dup = await db.prepare(`select name from ${t.table} where name = ?`).bind(next).first()
+      if (dup) return { error: `"${next}" 은(는) 이미 있습니다.` }
+      await db.batch([
+        db.prepare(`update ${t.table} set name = ? where name = ?`).bind(next, from),
+        db
+          .prepare(`update card_expenses set ${t.used} = ? where ${t.used} = ?`)
+          .bind(next, from),
+      ])
+      changed += 1
+    }
+    if (kind === 'settle') {
+      const nextDone = done ? 1 : 0
+      if ((cur.color || '') !== color || cur.done !== nextDone) {
+        await db
+          .prepare('update card_settles set color = ?, done = ? where name = ?')
+          .bind(color || '회색', nextDone, next)
+          .run()
+        if (next === from) changed += 1
+      }
+    }
+  }
+  return { ok: true, changed }
+}
+
+/**
+ * 항목을 지운다. 그 값을 쓰던 지출은 남고 그 칸만 빈다 — 돈을 쓴 사실까지
+ * 사라지면 정산이 맞지 않는다. 다만 정산상태는 비울 수 없으므로 처음 상태로
+ * 되돌린다.
+ */
+export async function deleteCardItem(db, kind, name) {
+  const t = CARD_LISTS[kind]
+  if (!t) return
+  const back = kind === 'settle' ? '지출품의 예정' : null
+  await db.batch([
+    db.prepare(`delete from ${t.table} where name = ?`).bind(name),
+    db.prepare(`update card_expenses set ${t.used} = ? where ${t.used} = ?`).bind(back, name),
+  ])
+}
+
+export async function moveCardItem(db, kind, name, dir) {
+  const t = CARD_LISTS[kind]
+  if (!t) return
+  const row = await db.prepare(`select * from ${t.table} where name = ?`).bind(name).first()
+  if (!row) return
+  const neighbour = await db
+    .prepare(
+      dir < 0
+        ? `select * from ${t.table} where sort_order < ? order by sort_order desc limit 1`
+        : `select * from ${t.table} where sort_order > ? order by sort_order limit 1`
+    )
+    .bind(row.sort_order)
+    .first()
+  if (!neighbour) return
+  await db.batch([
+    db.prepare(`update ${t.table} set sort_order = ? where name = ?`).bind(neighbour.sort_order, row.name),
+    db.prepare(`update ${t.table} set sort_order = ? where name = ?`).bind(row.sort_order, neighbour.name),
+  ])
+}

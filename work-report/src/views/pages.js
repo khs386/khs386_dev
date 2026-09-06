@@ -1,4 +1,4 @@
-// 화면 여섯 개. 서버에서 HTML을 그려 보내고, 폼을 제출하면 처리 후 되돌아온다.
+// 화면 일곱 개. 서버에서 HTML을 그려 보내고, 폼을 제출하면 처리 후 되돌아온다.
 import { page, esc, jsq, pill, tag, field, optionalSelect } from './layout.js'
 import { SHEET_JS, SHEET_HELP, sheetBox, jsonBlock } from './sheet.js'
 import { dday, koreanDate, koreanWeek, barHeight } from '../lib/report/format.js'
@@ -747,4 +747,229 @@ ${
 })()
 <\/script>`
   return page({ title: '보고서', path: '/reports', body })
+}
+
+/* ── 법인카드 ──────────────────────────────────────────── */
+
+/** 표가 쓰는 모양. 빈 값은 null이 아니라 ''로 보낸다. */
+export const cardRow = (e) => ({
+  id: e.id,
+  used_on: e.used_on,
+  title: e.title,
+  spender: nz(e.spender),
+  merchant: nz(e.merchant),
+  amount: e.amount === null || e.amount === undefined ? '' : Number(e.amount),
+  account: nz(e.account),
+  settle: nz(e.settle),
+  note: nz(e.note),
+})
+
+/** 항목 관리에서 고르는 색 이름과 실제 색. sheet.js의 딱지가 이 이름을 받는다. */
+export const CARD_COLORS = {
+  회색: '--gray', 초록: '--green', 주황: '--orange',
+  빨강: '--red', 파랑: '--accent', 보라: '--purple',
+}
+
+const money = (n) => Number(n || 0).toLocaleString('ko-KR')
+
+/** '2026-08-13' → '8월 13일'. 한 달 안에서만 보는 목록이라 해와 요일은 군더더기다. */
+const koreanDay = (iso) => {
+  const p = String(iso || '').split('-')
+  return p.length === 3 ? `${+p[1]}월 ${+p[2]}일` : iso
+}
+
+/** 이름 하나만 고치는 줄. 업무 유형 관리와 같은 모양이다. */
+const itemRow = (kind, r, i, n, extra) => `
+    <div class="item">
+      <input type="hidden" name="from" value="${esc(r.name)}">
+      <input name="to" value="${esc(r.name)}" class="wtname" aria-label="${esc(r.name)} 이름">
+      ${extra || ''}
+      <span class="spacer"></span>
+      <button class="btn ghost sm" formaction="/cards/items/move" name="move"
+              value="${kind}:${esc(r.name)}:-1" formnovalidate${i === 0 ? ' disabled' : ''}>↑</button>
+      <button class="btn ghost sm" formaction="/cards/items/move" name="move"
+              value="${kind}:${esc(r.name)}:1" formnovalidate${i === n - 1 ? ' disabled' : ''}>↓</button>
+      <button class="btn plain sm">수정</button>
+      <button class="btn danger sm" formaction="/cards/items/delete" name="remove"
+              value="${kind}:${esc(r.name)}" formnovalidate
+              onclick="return confirm('&quot;${jsq(r.name)}&quot; 을(를) 지울까요? 이 값을 쓰던 사용 내역은 남고 그 칸만 비워집니다.')">삭제</button>
+    </div>`
+
+const itemPanel = (kind, label, rows, hidden) => `
+    <div data-p="${kind}"${hidden ? ' hidden' : ''}>
+      <form method="post" action="/cards/items">
+        <input type="hidden" name="kind" value="${kind}">
+        ${rows.map((r, i) => itemRow(kind, r, i, rows.length,
+          kind !== 'settle' ? '' : `
+      <select name="color" class="mcolor" aria-label="${esc(r.name)} 색">${
+        Object.keys(CARD_COLORS)
+          .map((c) => `<option${c === r.color ? ' selected' : ''}>${c}</option>`).join('')}</select>
+      <label class="chk flat"><input type="checkbox" name="done" value="${esc(r.name)}"${
+        r.done ? ' checked' : ''}> 정산 끝</label>`)).join('')}
+      </form>
+      <div class="addrow">
+        <span class="lbl">새 ${label} 추가</span>
+        <form method="post" action="/cards/items/new" class="row">
+          <input type="hidden" name="kind" value="${kind}">
+          <input name="name" class="wtname" placeholder="예: ${
+            kind === 'account' ? '회의비' : kind === 'user' ? '차영미' : '지출품의 반려'}" required>
+          <button class="btn ghost">추가</button>
+        </form>
+      </div>
+    </div>`
+
+/**
+ * 항목 관리.
+ *
+ * 계정이나 사람을 손볼 일은 몇 달에 한 번이라 화면을 늘 차지할 이유가 없다.
+ * [표 쓰는 법]과 같은 글자 토글로 접어 둔다.
+ */
+function manageBox({ accounts, users, settles }) {
+  return `
+<details class="shhelp manage">
+  <summary>항목 관리</summary>
+  <div class="mbox">
+    <p class="mlead">고르는 칸에 나오는 값을 여기서 늘리고 줄입니다.</p>
+    <div class="tabs" data-mtabs>
+      <a href="#acc" data-t="account" class="on">처리 계정 <span class="count">${accounts.length}</span></a>
+      <a href="#user" data-t="user">사용자 <span class="count">${users.length}</span></a>
+      <a href="#settle" data-t="settle">정산상태 <span class="count">${settles.length}</span></a>
+    </div>
+    ${itemPanel('account', '처리 계정', accounts, false)}
+    ${itemPanel('user', '사용자', users, true)}
+    ${itemPanel('settle', '정산상태', settles, true)}
+  </div>
+</details>
+<script>
+(function () {
+  var tabs = document.querySelector('[data-mtabs]')
+  if (!tabs) return
+  tabs.addEventListener('click', function (ev) {
+    var a = ev.target.closest('a'); if (!a) return
+    ev.preventDefault()
+    tabs.querySelectorAll('a').forEach(function (x) { x.classList.toggle('on', x === a) })
+    document.querySelectorAll('[data-p]').forEach(function (p) {
+      p.hidden = p.dataset.p !== a.dataset.t
+    })
+  })
+})()
+<\/script>`
+}
+
+export function cardsPage({ month, monthLabel, prev, next, rows, summary,
+                            accounts, users, settles, presets, defaultDay }) {
+  const settleNames = settles.map((s) => s.name)
+  const tints = {}
+  for (const s of settles) tints[s.name] = CARD_COLORS[s.color] || '--gray'
+
+  const data = {
+    date: month, today: defaultDay,
+    statuses: STATUSES, statusesW: STATUSES, priorities: PRIORITIES,
+    tasks: [], types: [],
+    users: users.map((u) => u.name),
+    accounts: accounts.map((a) => a.name),
+    settles: settleNames,
+    tints,
+    presets,
+    grids: [{
+      id: 'cards', api: '/api/cards', kind: '', move: false, sum: 'amount',
+      needs: [['title', '세부 내역'], ['amount', '금액']],
+      cols: ['cday', 'ctitle', 'cuser', 'cshop', 'cwon', 'cacc', 'csettle', 'cnote'],
+      rows: rows.map(cardRow),
+    }],
+  }
+
+  const opts = (list, sel) =>
+    list.map((o) => `<option${o === sel ? ' selected' : ''}>${esc(o)}</option>`).join('')
+
+  const body = `
+<div class="head">
+  <div>
+    <h1>법인카드</h1>
+    <p>법인카드로 쓴 돈을 달마다 모아 정산 상태까지 함께 관리합니다.</p>
+  </div>
+  <form method="get" action="/cards" class="row">
+    <a class="btn ghost sm" href="/cards?month=${prev}">‹ ${+prev.slice(5)}월</a>
+    <input type="month" name="month" value="${month}" style="width:158px"
+           onchange="this.form.submit()" aria-label="달">
+    <a class="btn ghost sm" href="/cards?month=${next}">${+next.slice(5)}월 ›</a>
+  </form>
+</div>
+
+<div class="card">
+  <div class="chead"><h2>${monthLabel}<span class="count">${summary.count}건</span></h2></div>
+  <div class="brow">
+    <div class="bnum">
+      <span class="bl">이 달 합계</span>
+      <span class="bn">${money(summary.total)}원</span>
+    </div>
+    <div class="bnum">
+      <span class="bl">아직 승인되지 않음</span>
+      <span class="bn">${money(summary.openTotal)}원</span>
+      <ul>${
+        summary.open.length
+          ? summary.open.slice(0, 4).map((r) =>
+              `<li>${esc(koreanDay(r.used_on))} ${esc(r.title)} · ${esc(r.settle)}</li>`).join('') +
+            (summary.open.length > 4
+              ? `<li class="more">외 ${summary.open.length - 4}건</li>` : '')
+          : '<li class="more">모두 처리되었습니다</li>'
+      }</ul>
+    </div>
+    <div class="bnum">
+      <span class="bl">처리 계정별</span>
+      <div class="accs">${
+        summary.byAccount.length
+          ? summary.byAccount.map((a) =>
+              `<span class="tag">${esc(a.name)} <b>${money(a.total)}</b></span>`).join('')
+          : '<span class="count">아직 없습니다</span>'
+      }</div>
+    </div>
+  </div>
+</div>
+
+<div class="card" data-addcard="cards">
+  <div class="chead">
+    <h2>사용 내역 추가</h2>
+    <div class="row">
+      <span class="count" data-count="cards">0건</span>
+      <span class="shsave" data-save="cards"><span class="dot"></span><span class="txt">저장됨</span></span>
+      <button type="button" class="shretry" data-save-now="cards" hidden>다시 저장</button>
+    </div>
+  </div>
+  <div class="fld">
+    <label class="lblrow">자주 쓰는 항목<span class="muted">고르면 아래 칸이 함께 채워집니다</span></label>
+    <select data-preset aria-label="자주 쓰는 항목">
+      <option value="">고르지 않고 아래에 직접 입력해도 됩니다</option>
+      ${presets.map((p) =>
+        `<option value="${esc(p.id)}">${esc(p.title)}${
+          p.merchant ? ` — ${esc(p.merchant)}` : ''}</option>`).join('')}
+    </select>
+  </div>
+  <div class="grid cardadd">
+    <div class="fld"><label>사용일</label>
+      <input type="date" data-f="used_on" value="${defaultDay}"></div>
+    <div class="fld"><label>세부 내역</label><input data-f="title"></div>
+    <div class="fld"><label>사용자</label>
+      <select data-f="spender">${opts(data.users, data.users[0] || '')}</select></div>
+    <div class="fld"><label>사용처</label><input data-f="merchant"></div>
+    <!-- 금액은 숫자 칸으로 두지 않는다. 카드 명세서에서 '31,100원'을 그대로
+         붙여넣으면 숫자 칸은 값을 통째로 버린다. 쉼표는 받아서 떼어 낸다. -->
+    <div class="fld"><label>금액</label>
+      <input data-f="amount" inputmode="numeric" placeholder="0"></div>
+    <div class="fld"><label>처리 계정</label>
+      <select data-f="account">
+        <option value="">선택 안 함</option>${opts(data.accounts, '')}</select></div>
+    <div class="fld"><label>정산상태</label>
+      <select data-f="settle">${opts(settleNames, settleNames[0] || '')}</select></div>
+    <div class="fld span2"><label>비고</label><input data-f="note"></div>
+    <button type="button" class="btn addbtn" data-addfields="cards">추가</button>
+  </div>
+</div>
+<div class="sheet" id="sh-cards"></div>
+${SHEET_HELP}
+${manageBox({ accounts, users, settles })}
+<noscript><p class="note err">이 화면은 자바스크립트가 켜져 있어야 씁니다.</p></noscript>
+${jsonBlock('sheet-data', data)}
+${SHEET_JS}`
+  return page({ title: '법인카드', path: '/cards', body, wide: true })
 }

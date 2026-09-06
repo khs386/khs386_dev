@@ -83,6 +83,13 @@ export const SHEET_CSS = `
   text-align:left; padding:0 9px; height:32px; letter-spacing:.02em; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis; border-bottom:1px solid var(--sep)}
 .sheet thead th.c{text-align:center}
+/* 금액처럼 자릿수를 맞춰 읽는 칸은 오른쪽으로 붙인다. */
+.sheet thead th.r{text-align:right}
+.sheet td.cell.r .v{text-align:right}
+
+/* 표 맨 아래 합계 줄. 눈금자처럼 굵은 선으로 본문과 갈라 놓는다. */
+.sheet tfoot td{background:var(--fill); border-top:1px solid var(--sep); border-bottom:0}
+.sheet tfoot .v{font-weight:600; font-size:14px}
 
 .sheet td.cell{cursor:cell; position:relative}
 .sheet td.cell .v{display:block; padding:0 9px; white-space:nowrap; overflow:hidden;
@@ -147,6 +154,15 @@ select.ed{padding:0 4px}
 .shhelp kbd{font-family:ui-monospace,'SF Mono',Menlo,monospace; font-size:11.5px;
   background:var(--raised); border:1px solid var(--sep); border-bottom-width:2px;
   border-radius:5px; padding:1px 6px; color:var(--text); white-space:nowrap; margin-right:3px}
+
+/* 항목 관리. 몇 달에 한 번 열 자리라 [표 쓰는 법]처럼 글자만 놓고 접어 둔다. */
+.manage{margin-top:10px}
+.manage .mbox{margin:10px 0 0; padding:16px 18px 6px; border:1px solid var(--sep-soft);
+  border-radius:11px; background:var(--fill)}
+.manage .mlead{margin:0 0 12px; font-size:13px; color:var(--text-3)}
+.manage .item{border-top-color:var(--sep)}
+.manage .addrow{border-top-color:var(--sep)}
+.manage .mcolor{flex:0 0 auto; width:110px}
 `
 
 /* ── 화면에서 도는 스크립트 ────────────────────────────── */
@@ -172,11 +188,24 @@ var COLS = {
   detail:  {k:'detail_text', l:'세부내용 (줄바꿈 = 글머리 하나)', w:320, t:'multi'},
   misc:    {k:'is_misc',   l:'기타',       w:54,  t:'check', a:'c'},
   output:  {k:'output',    l:'산출물',     w:160, t:'text'},
-  note:    {k:'note',      l:'비고',       w:190, t:'text'}
+  note:    {k:'note',      l:'비고',       w:190, t:'text'},
+  // 법인카드. 사용일에는 D-day를 붙이지 않는다 — 이미 쓴 돈이라 남은 날이 없다.
+  cday:    {k:'used_on',   l:'사용일',     w:104, t:'day',  a:'c'},
+  ctitle:  {k:'title',     l:'세부 내역',  w:248, t:'text', ph:'여기에 입력하면 줄이 생깁니다'},
+  cuser:   {k:'spender',   l:'사용자',     w:88,  t:'list', o:D.users, a:'c'},
+  cshop:   {k:'merchant',  l:'사용처',     w:140, t:'text'},
+  cwon:    {k:'amount',    l:'금액',       w:104, t:'won',  a:'r'},
+  cacc:    {k:'account',   l:'처리 계정',  w:100, t:'list', o:D.accounts, a:'c'},
+  // 정산상태는 꽉 찬 색으로 둔다. 이 화면에서 눈이 가장 먼저 가야 하는 값이라
+  // 진행 상태 딱지와 같은 세기로는 묻힌다.
+  csettle: {k:'settle',    l:'정산상태',   w:122, t:'pill', o:D.settles, a:'c', solid:true},
+  cnote:   {k:'note',      l:'비고',       w:200, t:'text'}
 }
 
 var TINT = {예정:'--gray', 시작:'--purple', 진행:'--accent', 완료:'--green', 보류:'--orange',
   종결:'--green', 높음:'--red', 중간:'--orange', 낮음:'--gray'}
+// 정산상태의 색은 사람이 [항목 관리]에서 정하는 값이라 서버가 실어 보낸다.
+Object.keys(D.tints || {}).forEach(function (k) { TINT[k] = D.tints[k] })
 
 var G = {}   // id -> {id, api, kind, cols, rows, move}
 D.grids.forEach(function (g) {
@@ -208,8 +237,9 @@ function toast (m) {
 
 /* ── 값 그리기 ─────────────────────────────────────────── */
 
-function pill (v) {
+function pill (v, solid) {
   var c = TINT[v] || '--gray'
+  if (solid) return '<span class="pill" style="background:var(' + c + ')">' + esc(v) + '</span>'
   return '<span class="pill" style="background:color-mix(in srgb,var(' + c +
     ') 15%,transparent);color:var(' + c + ')">' + esc(v) + '</span>'
 }
@@ -219,17 +249,29 @@ function dday (v) {
   if (isNaN(a)) return null
   return Math.round((a - b) / 86400000)
 }
+function plainDate (v) {
+  var p = String(v).split('-')
+  if (p.length !== 3) return v
+  return (+p[1]) + '월 ' + (+p[2]) + '일'
+}
 function fmtDate (v) {
   var p = String(v).split('-')
   if (p.length !== 3) return v
   var d = dday(v)
-  return (+p[1]) + '월 ' + (+p[2]) + '일' +
+  return plainDate(v) +
     (d === null ? '' : '<span class="dn">D' + (d < 0 ? '+' + -d : '-' + d) + '</span>')
 }
 
 function cellHTML (col, row) {
   var v = row[col.k]
-  if (col.t === 'pill') return '<span class="v">' + (v ? pill(v) : '<span class="ph">—</span>') + '</span>'
+  if (col.t === 'pill') return '<span class="v">' +
+    (v ? pill(v, col.solid) : '<span class="ph">—</span>') + '</span>'
+  if (col.t === 'won') {
+    if (v === '' || v === null || v === undefined) return '<span class="v ph">—</span>'
+    return '<span class="v">' + Number(v).toLocaleString('ko-KR') + '</span>'
+  }
+  if (col.t === 'day') return '<span class="v' + (v ? '' : ' ph') + '">' +
+    (v ? plainDate(v) : '—') + '</span>'
   if (col.t === 'check') return '<span class="v"><input type="checkbox" class="shchk"' +
     (v ? ' checked' : '') + ' tabindex="-1" aria-label="' + esc(col.l) + '"></span>'
   if (col.t === 'pct') {
@@ -249,12 +291,33 @@ function cellHTML (col, row) {
   return '<span class="v' + (v ? '' : ' ph') + '">' + (v ? esc(v) : '—') + '</span>'
 }
 
+/**
+ * 표 맨 아래 합계 줄. g.sum에 적힌 열만 더한다.
+ *
+ * 위쪽 요약 칸에도 같은 숫자가 있지만 쓰임이 다르다 — 위는 달을 훑는 자리고
+ * 여기는 줄을 세다가 눈을 아래로 내려 확인하는 자리다.
+ */
+function foot (g) {
+  if (!g.sum) return ''
+  var at = -1
+  g.cols.forEach(function (c, i) { if (c.k === g.sum) at = i })
+  if (at < 0) return ''
+  var total = g.rows.reduce(function (a, r) { return a + (Number(r[g.sum]) || 0) }, 0)
+  var h = '<tfoot><tr><td class="rn"></td>'
+  if (at > 0) h += '<td class="cell" colspan="' + at + '"><span class="v">합계' +
+    '<span class="dn">' + g.rows.length + '건</span></span></td>'
+  h += '<td class="cell r"><span class="v">' + total.toLocaleString('ko-KR') + '</span></td>'
+  var rest = g.cols.length - at - 1
+  if (rest > 0) h += '<td class="cell" colspan="' + rest + '"></td>'
+  return h + '</tr></tfoot>'
+}
+
 function draw (id) {
   var g = G[id], h = '<table><colgroup><col style="width:38px">'
   g.cols.forEach(function (c) { h += '<col style="width:' + c.w + 'px">' })
   h += '</colgroup><thead><tr><th></th>'
   g.cols.forEach(function (c) {
-    h += '<th' + (c.a === 'c' ? ' class="c"' : '') + ' title="' + esc(c.l) + '">' + esc(c.l) + '</th>'
+    h += '<th' + (c.a ? ' class="' + c.a + '"' : '') + ' title="' + esc(c.l) + '">' + esc(c.l) + '</th>'
   })
   h += '</tr></thead><tbody>'
   for (var r = 0; r <= g.rows.length; r++) {
@@ -262,14 +325,15 @@ function draw (id) {
     h += '<tr' + (last ? ' class="ghost"' : '') + ' data-r="' + r + '"><td class="rn">' +
       (last ? '+' : (r + 1)) + (last ? '' : '<span class="x" title="이 줄 지우기">✕</span>') + '</td>'
     g.cols.forEach(function (c, ci) {
-      h += '<td class="cell' + (c.a === 'c' ? ' c' : '') + '" data-c="' + ci + '">' +
+      h += '<td class="cell' + (c.a ? ' ' + c.a : '') + '" data-c="' + ci + '">' +
         (last
-          ? '<span class="v ph">' + (c.t === 'task' ? '여기에 입력하면 줄이 생깁니다' : '') + '</span>'
+          ? '<span class="v ph">' + (c.ph || (c.t === 'task' ? '여기에 입력하면 줄이 생깁니다' : '')) + '</span>'
           : cellHTML(c, row)) + '</td>'
     })
     h += '</tr>'
   }
-  document.getElementById('sh-' + id).innerHTML = h + '</tbody></table>'
+  h += '</tbody>' + foot(g)
+  document.getElementById('sh-' + id).innerHTML = h + '</table>'
   var n = document.querySelector('[data-count="' + id + '"]')
   if (n) n.textContent = g.rows.length + '건'
   fillPicker(id)
@@ -341,9 +405,66 @@ function addRow (id, seed) {
   select(id, g.rows.length - 1, Math.min(c, g.cols.length - 1))
 }
 
+/**
+ * 칸을 하나씩 채워 넣는 카드(법인카드). 표의 열마다 [data-f="열이름"] 칸이 하나씩
+ * 있고, 그 값을 그대로 새 줄로 만든다.
+ */
+function addFromFields (box, id) {
+  var g = G[id], row = blank(g), missing = null
+  g.cols.forEach(function (c) {
+    var f = box.querySelector('[data-f="' + c.k + '"]')
+    if (!f) return
+    var v = f.value.trim()
+    if (c.t === 'won') v = v.replace(/[^0-9]/g, '')
+    row[c.k] = c.t === 'won' ? (v === '' ? '' : +v) : v
+  })
+  ;(g.needs || []).forEach(function (n) {
+    if (!missing && !String(row[n[0]] === 0 ? '' : (row[n[0]] || '')).trim()) missing = n
+  })
+  if (missing) {
+    toast(missing[1] + '을(를) 입력하세요.')
+    var f = box.querySelector('[data-f="' + missing[0] + '"]')
+    if (f) f.focus()
+    return
+  }
+  g.rows.push(row)
+  draw(id)
+  save(id, row)
+  // 이어서 한 건 더 넣는 일이 잦다. 되풀이되는 칸은 남기고 그때그때 달라지는
+  // 것만 비운다.
+  ;['title', 'amount', 'note'].forEach(function (k) {
+    var f = box.querySelector('[data-f="' + k + '"]')
+    if (f) f.value = ''
+  })
+  var amt = box.querySelector('[data-f="amount"]')
+  if (amt) amt.focus()
+}
+
+/** 자주 쓰는 항목을 고르면 아래 칸을 채운다. 금액만 치면 되게. */
+document.addEventListener('change', function (ev) {
+  var s = ev.target
+  if (!s.hasAttribute || !s.hasAttribute('data-preset')) return
+  var box = s.closest('[data-addcard]')
+  var p = null
+  ;(D.presets || []).forEach(function (x) { if (x.id === s.value) p = x })
+  if (!p) return
+  var fill = {title: p.title, merchant: p.merchant, account: p.account, spender: p.spender}
+  Object.keys(fill).forEach(function (k) {
+    var f = box.querySelector('[data-f="' + k + '"]')
+    if (f && fill[k]) f.value = fill[k]
+  })
+  var amt = box.querySelector('[data-f="amount"]')
+  if (amt) amt.focus()
+})
+
 document.addEventListener('click', function (ev) {
   var sv = ev.target.closest('[data-save-now]')
   if (sv) { saveAll(sv.getAttribute('data-save-now')); return }
+  var ac = ev.target.closest('[data-addfields]')
+  if (ac) {
+    addFromFields(ac.closest('[data-addcard]'), ac.getAttribute('data-addfields'))
+    return
+  }
   var b = ev.target.closest('[data-addpick],[data-addfree]')
   if (!b || b.disabled) return
   var box = b.closest('[data-add]'), id = box.getAttribute('data-add')
@@ -372,6 +493,8 @@ document.addEventListener('keydown', function (ev) {
     ev.preventDefault(); t.closest('[data-add]').querySelector('[data-addfree]').click()
   } else if (t.hasAttribute && (t.hasAttribute('data-pick') || t.hasAttribute('data-pq'))) {
     ev.preventDefault(); t.closest('[data-add]').querySelector('[data-addpick]').click()
+  } else if (t.hasAttribute && t.hasAttribute('data-f')) {
+    ev.preventDefault(); t.closest('[data-addcard]').querySelector('[data-addfields]').click()
   }
 })
 
@@ -416,10 +539,16 @@ function mark (id, cls, txt) {
 }
 function save (id, row) {
   var g = G[id]
-  // 이름 없는 새 줄은 아직 보내지 않는다. 서버는 이름 없는 줄을 만들 수 없다.
-  if (!row.id && !String(row.title || '').trim()) {
-    mark(id, 'busy', '업무명을 입력하면 저장합니다')
-    return
+  // 덜 채워진 새 줄은 아직 보내지 않는다. 서버는 이름 없는 줄을 만들 수 없고,
+  // 법인카드는 금액 없는 지출을 정산에 쓸 수 없다.
+  if (!row.id) {
+    var need = (g.needs || [['title', '업무명']]).filter(function (n) {
+      return !String(row[n[0]] === 0 ? '' : (row[n[0]] || '')).trim()
+    })
+    if (need.length) {
+      mark(id, 'busy', need.map(function (n) { return n[1] }).join('과 ') + '을 입력하면 저장합니다')
+      return
+    }
   }
   // 한 줄에 대한 요청은 겹치지 않게 한다. 아직 id가 없는 줄에 두 번 보내면
   // 두 번째 요청도 '새 줄'로 읽혀 같은 줄이 두 개 생긴다. (엑셀에서 여러 칸을
@@ -562,6 +691,10 @@ function put (id, r, c, val) {
   if (col.t === 'pct') {
     var n = String(val).replace(/[^0-9]/g, '')
     row[col.k] = n === '' ? '' : Math.max(0, Math.min(100, +n))
+  } else if (col.t === 'won') {
+    // 카드 명세서를 붙여넣으면 '31,100원' 같은 모양으로 들어온다.
+    var w = String(val).replace(/[^0-9]/g, '')
+    row[col.k] = w === '' ? '' : +w
   } else if (col.t === 'check') {
     row[col.k] = !!val
   } else {
@@ -601,7 +734,7 @@ function beginEdit (seed) {
   if (col.t === 'check') { put(sel.id, sel.r, sel.c, !cur); return }
 
   var e, hint = null, wide = 0, tall = 0
-  if (col.t === 'pill' || col.t === 'pick') {
+  if (col.t === 'pill' || col.t === 'pick' || col.t === 'list') {
     e = document.createElement('select'); e.className = 'ed'
     ;[''].concat(optsFor(g, col, row)).forEach(function (o) {
       var op = document.createElement('option')
@@ -609,7 +742,7 @@ function beginEdit (seed) {
       e.appendChild(op)
     })
     e.value = cur || ''
-  } else if (col.t === 'date') {
+  } else if (col.t === 'date' || col.t === 'day') {
     e = document.createElement('input'); e.type = 'date'; e.className = 'ed'; e.value = cur || ''
   } else if (col.t === 'multi') {
     e = document.createElement('textarea'); e.className = 'ed'
@@ -629,7 +762,7 @@ function beginEdit (seed) {
   } else {
     e = document.createElement('input'); e.type = 'text'; e.className = 'ed'
     e.value = seed != null ? seed : (cur || '')
-    if (col.t === 'pct') e.inputMode = 'numeric'
+    if (col.t === 'pct' || col.t === 'won') e.inputMode = 'numeric'
     if (col.t === 'task') wide = 340
   }
 
@@ -642,7 +775,7 @@ function beginEdit (seed) {
   else if (seed != null && e.setSelectionRange) e.setSelectionRange(e.value.length, e.value.length)
 
   if (col.t === 'task') openCombo(e, t, tasksFor(g, row))
-  if (col.t === 'pill' || col.t === 'pick') {
+  if (col.t === 'pill' || col.t === 'pick' || col.t === 'list') {
     e.addEventListener('change', function () { commit(); move(1, 0) })
   }
   e.addEventListener('blur', function () {
@@ -780,7 +913,8 @@ document.addEventListener('keydown', function (ev) {
   if (ev.key.length === 1) {
     var t = G[sel.id].cols[sel.c].t
     ev.preventDefault()
-    beginEdit(t === 'pill' || t === 'pick' || t === 'date' ? null : ev.key)
+    beginEdit(t === 'pill' || t === 'pick' || t === 'list' ||
+              t === 'date' || t === 'day' ? null : ev.key)
   }
 })
 
