@@ -438,17 +438,36 @@ app.post('/series/move', async (c) => {
 
 const kindOr = (v) => (v === 'weekly' ? 'weekly' : 'daily')
 
+/** 이력은 30건씩 보여 주고 '더 보기'로 늘린다. 한 번에 다 싣지 않는다. */
+const HISTORY_STEP = 30
+const limitOr = (v) => {
+  const n = Number(v)
+  return Number.isFinite(n) && n > 0 ? Math.min(Math.round(n), 500) : HISTORY_STEP
+}
+
 app.get('/reports', async (c) => {
   const kind = kindOr(c.req.query('kind'))
   const date = dateOr(c.req.query('date'), todayKST())
-  const [report, history] = await Promise.all([
+  const limit = limitOr(c.req.query('limit'))
+  const [report, history, total] = await Promise.all([
     db.getReport(c.env.DB, kind, date),
-    db.listReports(c.env.DB),
+    db.listReports(c.env.DB, limit),
+    db.countReports(c.env.DB),
   ])
   return html(c, reportsPage({
-    kind, date, report, history,
+    kind, date, report, history, total, limit, step: HISTORY_STEP,
     driveReady: driveConfigured(c.env),
   }))
+})
+
+app.post('/reports/delete', async (c) => {
+  const form = await c.req.formData()
+  const kind = kindOr(form.get('kind'))
+  const date = dateOr(form.get('date'), todayKST())
+  const limit = limitOr(form.get('limit'))
+  const name = await db.deleteReport(c.env.DB, form.get('id'))
+  const to = `/reports?kind=${kind}&date=${date}` + (limit === HISTORY_STEP ? '' : `&limit=${limit}`)
+  return back(c, to, name ? `"${name}"을(를) 지웠습니다.` : '이미 지워진 보고서입니다.')
 })
 
 app.post('/reports/generate', async (c) => {

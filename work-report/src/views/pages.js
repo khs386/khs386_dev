@@ -613,7 +613,16 @@ document.querySelectorAll('[data-series]').forEach(function (card) {
 
 /* ── 보고서 ─────────────────────────────────────────────── */
 
-export function reportsPage({ kind, date, report, history, driveReady }) {
+export function reportsPage({ kind, date, report, history, total, limit, step, driveReady }) {
+  /** 보고서 한 건을 지우는 폼. 지운 뒤에는 보던 자리로 되돌아온다. */
+  const delForm = (r, cls) => `<form method="post" action="/reports/delete" class="inline"
+    onsubmit="return confirm('&quot;${jsq(r.filename)}&quot; 을(를) 지웁니다.\\n구글 드라이브에 저장된 파일은 그대로 남습니다. 계속할까요?')">
+    <input type="hidden" name="id" value="${esc(r.id)}">
+    <input type="hidden" name="kind" value="${kind}">
+    <input type="hidden" name="date" value="${date}">
+    <input type="hidden" name="limit" value="${limit}">
+    <button class="btn danger ${cls}">삭제</button></form>`
+
   const body = `
 <div class="head"><div><h1>보고서</h1>
   <p>${kind === 'daily' ? koreanDate(date) : koreanWeek(date)}</p></div></div>
@@ -623,11 +632,11 @@ export function reportsPage({ kind, date, report, history, driveReady }) {
     <a class="${kind === 'daily' ? 'on' : ''}" href="/reports?kind=daily&date=${date}">일일</a>
     <a class="${kind === 'weekly' ? 'on' : ''}" href="/reports?kind=weekly&date=${date}">주간</a>
   </div>
-  <form method="get" action="/reports" class="row" style="margin-bottom:9px">
-    <input type="hidden" name="kind" value="${kind}">
-    <input type="date" name="date" value="${date}" style="width:170px" onchange="this.form.submit()">
-  </form>
   <div class="row">
+    <form method="get" action="/reports" class="inline">
+      <input type="hidden" name="kind" value="${kind}">
+      <input type="date" name="date" value="${date}" style="width:170px" onchange="this.form.submit()">
+    </form>
     <form method="post" action="/reports/generate" class="inline">
       <input type="hidden" name="kind" value="${kind}"><input type="hidden" name="date" value="${date}">
       <button class="btn">보고서 만들기</button></form>
@@ -648,7 +657,8 @@ ${
           <div class="row"><h2>미리보기</h2>
             <a href="/reports/preview?kind=${kind}&date=${date}"
                target="_blank" rel="noreferrer">새 탭에서 크게 보기</a></div>
-          <span class="count mono">${esc(report.filename)}</span></div>
+          <div class="row"><span class="count mono">${esc(report.filename)}</span>
+            ${delForm(report, 'sm')}</div></div>
         <!-- 보고서 문서는 920~960px로 폭이 정해져 있다. 좁은 자리에 그대로 넣으면
              가로 막대가 생겨 오른쪽이 잘린다. 원래 폭으로 그린 뒤 자리에 맞춰 줄인다. -->
         <div class="previewbox">
@@ -683,21 +693,56 @@ ${
 <\/script>
 
 <div class="card">
-  <div class="chead"><h2>생성 이력</h2><span class="count">최근 30건</span></div>
+  <div class="chead"><h2>생성 이력</h2>
+    <span class="count">${total}건 중 ${history.length}건</span></div>
   ${
     history.length
-      ? history.map((r) => `<div class="item">
+      ? `<div class="filters row">
+    <input class="grow" data-rq placeholder="파일명·날짜로 찾기 (예: 20260812)" aria-label="보고서 찾기">
+    <select data-rk aria-label="종류로 거르기">
+      <option value="">모든 종류</option><option value="daily">일일</option>
+      <option value="weekly">주간</option></select>
+  </div>` + history.map((r) => `<div class="item" data-rrow
+          data-name="${esc(r.filename)} ${esc(r.report_date)}" data-kind="${r.kind}">
           ${tag(r.kind === 'daily' ? '일일' : '주간')}
           <span class="t mono" style="font-size:13px">${esc(r.filename)}</span>
           ${tag(r.report_date)}
           <a class="tag" href="/reports/preview?kind=${r.kind}&date=${r.report_date}"
-             target="_blank" rel="noreferrer">보기</a>
+             target="_blank" rel="noreferrer">열기</a>
           ${r.drive_link ? `<a class="tag" href="${esc(r.drive_link)}" target="_blank" rel="noreferrer">드라이브</a>` : ''}
           <span class="spacer"></span>
-          <a class="btn ghost sm" href="/reports?kind=${r.kind}&date=${r.report_date}">열기</a>
-        </div>`).join('')
+          <a class="btn ghost sm" href="/reports?kind=${r.kind}&date=${r.report_date}">보기</a>
+          ${delForm(r, 'sm')}
+        </div>`).join('') +
+        `<p class="empty" data-rnone hidden>찾는 보고서가 없습니다.</p>` +
+        (history.length < total
+          ? `<div class="row" style="justify-content:center;margin-top:14px">
+              <a class="btn ghost sm"
+                 href="/reports?kind=${kind}&date=${date}&limit=${limit + step}">${
+                   Math.min(step, total - history.length)}건 더 보기</a></div>`
+          : '')
       : '<p class="empty">이력이 없습니다.</p>'
   }
-</div>`
+</div>
+<script>
+;(function () {
+  var q = document.querySelector('[data-rq]'), k = document.querySelector('[data-rk]')
+  if (!q || !k) return
+  var rows = [].slice.call(document.querySelectorAll('[data-rrow]'))
+  var none = document.querySelector('[data-rnone]')
+  function run() {
+    var t = q.value.trim().toLowerCase(), kk = k.value, n = 0
+    rows.forEach(function (r) {
+      var ok = (!t || r.getAttribute('data-name').toLowerCase().indexOf(t) >= 0) &&
+               (!kk || r.getAttribute('data-kind') === kk)
+      r.hidden = !ok
+      if (ok) n++
+    })
+    if (none) none.hidden = n > 0
+  }
+  q.addEventListener('input', run)
+  k.addEventListener('change', run)
+})()
+<\/script>`
   return page({ title: '보고서', path: '/reports', body })
 }

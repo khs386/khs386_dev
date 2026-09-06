@@ -408,6 +408,22 @@ export async function listReports(db, limit = 30) {
   return results || []
 }
 
+export async function countReports(db) {
+  const r = await db.prepare('select count(*) n from reports').first()
+  return r?.n || 0
+}
+
+/**
+ * 보고서 한 건을 지운다. 앱에 담아 둔 것만 지우고 드라이브에 올라간 파일은
+ * 건드리지 않는다 — 되돌릴 수 없는 범위를 좁게 둔다.
+ */
+export async function deleteReport(db, id) {
+  const r = await db.prepare('select filename from reports where id = ?').bind(id).first()
+  if (!r) return null
+  await db.prepare('delete from reports where id = ?').bind(id).run()
+  return r.filename
+}
+
 /* ── 설정 ──────────────────────────────────────────────── */
 
 export async function getSettings(db) {
