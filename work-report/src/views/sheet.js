@@ -680,6 +680,17 @@ function select (id, r, c) {
   })
   sel = {id: id, r: r, c: c}; paint()
 }
+/** 고른 칸을 놓는다. 표시와 tabindex를 함께 거두어야 포커스도 같이 빠진다. */
+function clearSel () {
+  if (!sel) return
+  var t = td(sel.id, sel.r, sel.c)
+  sel = null
+  document.querySelectorAll('.sheet td[tabindex]').forEach(function (e) {
+    e.removeAttribute('tabindex')
+  })
+  if (t && document.activeElement === t) t.blur()
+  paint()
+}
 function move (dr, dc) {
   if (!sel) return
   var g = G[sel.id], r = sel.r + dr, c = sel.c + dc
@@ -789,8 +800,11 @@ function beginEdit (seed) {
           id: sel.id, r: sel.r, c: sel.c, col: col, row: row}
   reposition()
   e.focus()
-  if (seed == null && e.select) e.select()
-  else if (seed != null && e.setSelectionRange) e.setSelectionRange(e.value.length, e.value.length)
+  // 짧은 칸은 엑셀처럼 통째로 잡아 둔다 — 다시 치는 편이 빠르기 때문이다.
+  // 세부내용처럼 여러 줄인 칸은 그러지 않는다. 애써 적은 글이 파랗게 덮여
+  // 읽기 어렵고, 아무 키나 눌리면 통째로 날아간다. 커서만 맨 끝에 둔다.
+  if (seed == null && col.t !== 'multi' && e.select) e.select()
+  else if (e.setSelectionRange) e.setSelectionRange(e.value.length, e.value.length)
 
   if (col.t === 'task') openCombo(e, t, tasksFor(g, row))
   if (col.t === 'pill' || col.t === 'pick' || col.t === 'list') {
@@ -965,7 +979,9 @@ document.addEventListener('mousedown', function (ev) {
     return
   }
   var cell = ev.target.closest('.sheet td.cell')
-  if (!cell) { if (edit) commit(); return }
+  // 표 바깥을 누르면 손을 뗀다. 골라 둔 채로 놔두면 파란 테두리가 남고
+  // 키보드 화살표도 표에 걸려 있어, 딴 곳을 보다 잘못 눌러 값이 바뀐다.
+  if (!cell) { if (edit) commit(); clearSel(); return }
 
   var id = cell.closest('.sheet').id.slice(3)
   var r = +cell.closest('tr').getAttribute('data-r'), c = +cell.getAttribute('data-c')
