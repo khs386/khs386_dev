@@ -3,7 +3,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
-  koreanMoney, koreanDate, voucherSheets, voucherFilename, voucherFile, ROWS_PER_SHEET,
+  koreanMoney, koreanDate, voucherSheets, voucherFilename, voucherFilenames, voucherFile,
+  ROWS_PER_SHEET,
 } from '../src/lib/voucher.js'
 
 const row = (used_on, title, amount, account, spender) =>
@@ -36,52 +37,36 @@ test('한글 금액 — 0과 잘못된 값', () => {
   assert.equal(koreanMoney(4110.9), '사천일백일십원정')
 })
 
-test('한 장에 세 줄까지 담고 넘치면 장을 나눈다', () => {
+test('고른 한 건이 곧 한 장이다', () => {
   const rows = [1, 2, 3, 4].map((i) => row('2026-08-0' + i, '발송' + i, 1000 * i, '통신', '권호상'))
   const sheets = voucherSheets(rows)
+  // 결재는 건마다 따로 올라간다. 묶으면 한 건이 막혔을 때 나머지도 멈춘다.
+  assert.equal(sheets.length, 4)
+  assert.deepEqual(sheets.map((x) => x.rows.length), [1, 1, 1, 1])
+  assert.deepEqual(sheets.map((x) => x.total), [1000, 2000, 3000, 4000])
+  // 서식의 줄 수는 셋 그대로다. 남는 두 줄은 빈 채로 나간다.
   assert.equal(ROWS_PER_SHEET, 3)
-  assert.equal(sheets.length, 2)
-  assert.equal(sheets[0].rows.length, 3)
-  assert.equal(sheets[1].rows.length, 1)
-  assert.equal(sheets[0].total, 6000)
-  assert.equal(sheets[1].total, 4000)
+  assert.equal((voucherFile(sheets[0]).match(/class="item"/g) || []).length, 3)
 })
 
-test('처리 계정이 다르면 장을 나눈다', () => {
+test('계정과 사용자가 같아도 묶지 않는다', () => {
   const sheets = voucherSheets([
     row('2026-08-01', '계약서 발송', 1800, '통신', '권호상'),
     row('2026-08-02', '야근 식대', 11000, '식비', '권호상'),
     row('2026-08-03', '계약서 발송', 4110, '통신', '권호상'),
   ])
-  assert.equal(sheets.length, 2)
-  assert.equal(sheets[0].account, '통신')
-  assert.equal(sheets[0].rows.length, 2)
-  assert.equal(sheets[0].total, 5910)
-  assert.equal(sheets[1].account, '식비')
-  assert.equal(sheets[1].total, 11000)
+  assert.equal(sheets.length, 3)
+  assert.deepEqual(sheets.map((x) => x.account), ['통신', '식비', '통신'])
+  assert.deepEqual(sheets.map((x) => x.total), [1800, 11000, 4110])
 })
 
-test('사용자가 다르면 장을 나눈다', () => {
-  // 결의서 맨 아래 청구자는 한 사람이다. 남이 쓴 돈을 내 이름으로 올릴 수 없다.
+test('장마다 청구자와 발의일은 그 건의 것이다', () => {
   const sheets = voucherSheets([
     row('2026-07-27', '계약서 발송', 10800, '통신', '박누리별'),
     row('2026-09-01', '세이펜 계약서 발송', 4110, '통신', '권호상'),
   ])
-  assert.equal(sheets.length, 2)
-  assert.equal(sheets[0].claimant, '박누리별')
-  assert.equal(sheets[1].claimant, '권호상')
-})
-
-test('발의일은 그 장에서 가장 이른 사용일이다', () => {
-  // 아직 쓰지 않은 돈을 청구한 것처럼 보이면 안 된다.
-  const sheets = voucherSheets([
-    row('2026-07-28', '계약서 발송', 1800, '통신', '박누리별'),
-    row('2026-07-27', '계약서 발송', 10800, '통신', '박누리별'),
-  ])
-  assert.equal(sheets.length, 1)
-  assert.equal(sheets[0].issuedOn, '2026-07-27')
-  assert.equal(sheets[0].total, 12600)
-  assert.equal(koreanMoney(sheets[0].total), '일만이천육백원정')
+  assert.deepEqual(sheets.map((x) => x.claimant), ['박누리별', '권호상'])
+  assert.deepEqual(sheets.map((x) => x.issuedOn), ['2026-07-27', '2026-09-01'])
 })
 
 test('고른 것이 없으면 장도 없다', () => {
@@ -93,11 +78,14 @@ test('파일 이름은 날짜가 앞에 오고 파일명에 못 쓰는 글자를
   const one = voucherSheets([row('2026-09-01', '세이펜 계약서 발송', 4110, '통신', '권호상')])[0]
   assert.equal(voucherFilename(one), 'voucher_2026-09-01_세이펜_계약서_발송.html')
 
-  const many = voucherSheets([
+  const two = voucherSheets([
     row('2026-07-27', '꼬마생각 계약서 발송', 10800, '통신', '박누리별'),
     row('2026-07-28', '꼬마생각 계약서 발송', 1800, '통신', '박누리별'),
-  ])[0]
-  assert.equal(voucherFilename(many), 'voucher_2026-07-27_꼬마생각_계약서_발송_외1건.html')
+  ])
+  assert.deepEqual(two.map(voucherFilename), [
+    'voucher_2026-07-27_꼬마생각_계약서_발송.html',
+    'voucher_2026-07-28_꼬마생각_계약서_발송.html',
+  ])
 
   const odd = voucherSheets([row('2026-06-01', 'A/B: "c"?', 100, '기타', '권호상')])[0]
   assert.match(voucherFilename(odd), /^voucher_2026-06-01_[^\\/:*?"<>|]+\.html$/)
@@ -128,4 +116,22 @@ test('비고에 든 홑화살괄호는 글자로 나간다', () => {
   const html = voucherFile(sheet)
   assert.match(html, /&lt;발레&gt; 건/)
   assert.doesNotMatch(html, /<발레>/)
+})
+
+test('같은 날 같은 이름은 뒤엣것에 번호를 붙인다', () => {
+  // 드라이브는 같은 이름을 덮어쓴다. 번호가 없으면 앞엣것이 사라진다.
+  const sheets = voucherSheets([
+    row('2026-08-13', '야근 식대', 11000, '식비', '권호상'),
+    row('2026-08-13', '야근 식대', 23000, '식비', '권호상'),
+    row('2026-08-13', '야근 식대', 9000, '식비', '권호상'),
+    row('2026-08-14', '야근 식대', 9000, '식비', '권호상'),
+  ])
+  assert.deepEqual(voucherFilenames(sheets), [
+    'voucher_2026-08-13_야근_식대.html',
+    'voucher_2026-08-13_야근_식대_2.html',
+    'voucher_2026-08-13_야근_식대_3.html',
+    'voucher_2026-08-14_야근_식대.html',
+  ])
+  // 겹치지 않으면 멀쩡한 이름 그대로다.
+  assert.equal(new Set(voucherFilenames(sheets)).size, 4)
 })

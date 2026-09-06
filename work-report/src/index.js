@@ -12,7 +12,7 @@ import { soonTasks } from './lib/tasks.js'
 import {
   monthOr, monthOf, monthStart, shiftMonth, koreanMonth, summarize, missingRecurring,
 } from './lib/cards.js'
-import { voucherSheets, voucherFilename, voucherDocument, voucherFile } from './lib/voucher.js'
+import { voucherSheets, voucherFilenames, voucherDocument, voucherFile } from './lib/voucher.js'
 import { STAGE_KEY } from './lib/series.js'
 import { loginPage, FAVICON } from './views/layout.js'
 import { privacyPage, termsPage } from './views/legal.js'
@@ -725,14 +725,13 @@ app.post('/cards/voucher/drive', async (c) => {
     if (!rows.length) throw new Error('고른 내역이 없습니다.')
     const sheets = voucherSheets(rows)
     // 장마다 파일 하나로 올린다. 결재는 장 단위로 올라가므로 한 파일에 여러
-    // 장을 담으면 나눠 낼 수가 없다.
-    const names = []
-    for (const sheet of sheets) {
-      const filename = voucherFilename(sheet)
+    // 장을 담으면 나눠 낼 수가 없다. 이름은 한꺼번에 지어 서로 겹치지 않게 한다.
+    const names = voucherFilenames(sheets)
+    for (let i = 0; i < sheets.length; i++) {
       await uploadHtml(c.env, {
-        filename, html: voucherFile(sheet), kind: 'voucher', date: sheet.issuedOn,
+        filename: names[i], html: voucherFile(sheets[i]), kind: 'voucher',
+        date: sheets[i].issuedOn,
       })
-      names.push(filename)
     }
     return back(c, to, `드라이브에 ${names.length}장을 저장했습니다.`)
   } catch (e) {
