@@ -10,7 +10,7 @@ import {
 import { weekStart } from './lib/report/format.js'
 import { monthOr, monthOf, monthStart, shiftMonth, koreanMonth, summarize } from './lib/cards.js'
 import { voucherSheets, voucherFilename, voucherDocument, voucherFile } from './lib/voucher.js'
-import { STAGES } from './lib/series.js'
+import { STAGE_KEY } from './lib/series.js'
 import { loginPage, FAVICON } from './views/layout.js'
 import { privacyPage, termsPage } from './views/legal.js'
 import {
@@ -394,26 +394,38 @@ app.post('/work-types/move', async (c) => {
 
 /* ── 시리즈 ─────────────────────────────────────────────── */
 
-app.get('/series', async (c) =>
-  html(c, seriesPage({
-    series: await db.listSeries(c.env.DB),
-    palette: db.SERIES_PALETTE,
-  })))
+app.get('/series', async (c) => {
+  const [series, presets] = await Promise.all([
+    db.listSeries(c.env.DB),
+    db.listStagePresets(c.env.DB),
+  ])
+  return html(c, seriesPage({ series, presets, palette: db.SERIES_PALETTE }))
+})
+
+/**
+ * 폼에서 단계 목록을 읽는다.
+ *
+ * 칸 이름이 l_<열쇠> / w_<열쇠> / v_<열쇠> 로 되어 있고, 차례는 hidden으로 실려 온
+ * key 목록이 정한다. 화면에 그려진 것만 저장되므로, 지운 단계가 되살아나지 않는다.
+ */
+function stagesFromForm(form) {
+  return form.getAll('key').filter((k) => STAGE_KEY.test(k)).map((key) => ({
+    key,
+    label: form.get(`l_${key}`),
+    weight: form.get(`w_${key}`),
+    value: form.get(`v_${key}`),
+  }))
+}
 
 app.post('/series', async (c) => {
   const form = await c.req.formData()
-  const names = form.getAll('name')
-  const colors = form.getAll('color')
-  const stages = Object.fromEntries(STAGES.map((s) => [s.key, form.getAll(s.key)]))
-  await db.saveSeries(
-    c.env.DB,
-    names.map((name, i) => ({
-      name,
-      color: colors[i],
-      ...Object.fromEntries(STAGES.map((s) => [s.key, stages[s.key][i]])),
-    }))
-  )
-  return back(c, '/series', '저장했습니다.')
+  const name = String(form.get('name') || '')
+  if (!name) return back(c, '/series', '시리즈를 찾지 못했습니다.')
+  await db.saveSeries(c.env.DB, name, {
+    color: form.get('color'),
+    stages: stagesFromForm(form),
+  })
+  return back(c, '/series', `"${name}"을(를) 저장했습니다.`)
 })
 
 app.post('/series/new', async (c) => {
@@ -433,6 +445,66 @@ app.post('/series/move', async (c) => {
   const form = await c.req.formData()
   const [name, dir] = String(form.get('move') || '').split(':')
   if (name) await db.moveSeries(c.env.DB, name, Number(dir) || 1)
+  return c.redirect('/series')
+})
+
+/* 시리즈 안의 단계 — 이 시리즈에만 닿는다 */
+
+app.post('/series/stage/new', async (c) => {
+  const form = await c.req.formData()
+  const name = String(form.get('name') || '')
+  const { error, label } = await db.addSeriesStage(c.env.DB, name, form.get('label'))
+  return back(c, '/series', error || `"${label}" 단계를 더했습니다.`)
+})
+
+app.post('/series/stage/delete', async (c) => {
+  const form = await c.req.formData()
+  const name = String(form.get('name') || '')
+  const key = String(form.get('remove') || '')
+  if (name && STAGE_KEY.test(key)) await db.deleteSeriesStage(c.env.DB, name, key)
+  return back(c, '/series', '단계를 지웠습니다.')
+})
+
+app.post('/series/stage/move', async (c) => {
+  const form = await c.req.formData()
+  const name = String(form.get('name') || '')
+  const [key, dir] = String(form.get('move') || '').split(':')
+  if (name && STAGE_KEY.test(key)) await db.moveSeriesStage(c.env.DB, name, key, Number(dir) || 1)
+  return c.redirect('/series')
+})
+
+app.post('/series/stage/reset', async (c) => {
+  const form = await c.req.formData()
+  const name = String(form.get('name') || '')
+  if (name) await db.resetSeriesStages(c.env.DB, name)
+  return back(c, '/series', '기본 목록을 불러왔습니다.')
+})
+
+/* 기본 단계 목록 — 새 시리즈가 물려받을 본. 이미 있는 시리즈는 건드리지 않는다 */
+
+app.post('/series/preset', async (c) => {
+  const form = await c.req.formData()
+  await db.savePresets(c.env.DB, stagesFromForm(form))
+  return back(c, '/series', '기본 목록을 저장했습니다.')
+})
+
+app.post('/series/preset/new', async (c) => {
+  const form = await c.req.formData()
+  const { error, label } = await db.addPreset(c.env.DB, form.get('label'))
+  return back(c, '/series', error || `"${label}"을(를) 기본 목록에 더했습니다.`)
+})
+
+app.post('/series/preset/delete', async (c) => {
+  const form = await c.req.formData()
+  const key = String(form.get('remove') || '')
+  if (STAGE_KEY.test(key)) await db.deletePreset(c.env.DB, key)
+  return back(c, '/series', '기본 목록에서 지웠습니다.')
+})
+
+app.post('/series/preset/move', async (c) => {
+  const form = await c.req.formData()
+  const [key, dir] = String(form.get('move') || '').split(':')
+  if (STAGE_KEY.test(key)) await db.movePreset(c.env.DB, key, Number(dir) || 1)
   return c.redirect('/series')
 })
 

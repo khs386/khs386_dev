@@ -4,7 +4,7 @@ import { SHEET_JS, SHEET_HELP, sheetBox, jsonBlock } from './sheet.js'
 import { dday, koreanDate, koreanWeek, barHeight } from '../lib/report/format.js'
 import { SERIES_COLOR, displayStatus } from '../lib/report/colors.js'
 import { statusTint, priorityTint, ddayTint } from './ui.js'
-import { STAGES } from '../lib/series.js'
+
 
 export const STATUSES = ['예정', '시작', '진행', '완료', '보류']
 export const PRIORITIES = ['높음', '중간', '낮음']
@@ -517,7 +517,7 @@ ${SHEET_JS}`
 
 /* ── 개발현황 ─────────────────────────────────────────────── */
 
-export function seriesPage({ series, palette }) {
+export function seriesPage({ series, palette, presets }) {
   const colorSelect = (name, value) =>
     `<select name="color" style="width:104px" aria-label="${esc(name)} 색">` +
     palette
@@ -526,30 +526,63 @@ export function seriesPage({ series, palette }) {
       .join('') +
     `</select>`
 
-  // 단계별 값을 넣으면 총 진행률이 가중치대로 계산된다.
-  const stageInputs = (s) =>
-    STAGES.map((st) => `
-      <div class="fld">
-        <label>${st.label} <span style="opacity:.6">${Math.round(st.weight * 100)}%</span></label>
-        <input type="number" min="0" max="100" name="${st.key}"
-               value="${s[st.key] === null || s[st.key] === undefined ? '' : s[st.key]}"
-               data-w="${st.weight}" aria-label="${esc(s.name)} ${st.label}">
+  const sum = (stages) => stages.reduce((a, st) => a + (Number(st.weight) || 0), 0)
+
+  // 값을 넣는 칸. 몫이 0인 단계는 셈에 들지 않으므로 흐리게 두어 눈으로 걸러진다.
+  const valueInputs = (s) =>
+    s.stages.map((st) => `
+      <div class="fld${Number(st.weight) ? '' : ' off'}" data-cell="${esc(st.key)}">
+        <label>${esc(st.label)} <span class="wtag">${Number(st.weight) || 0}%</span></label>
+        <input type="number" min="0" max="100" name="v_${esc(st.key)}"
+               value="${st.value === null || st.value === undefined ? '' : st.value}"
+               data-v="${esc(st.key)}" aria-label="${esc(s.name)} ${esc(st.label)}">
       </div>`).join('')
+
+  /** 단계 한 줄. 시리즈 안에서도, 기본 목록에서도 같은 모양으로 쓴다. */
+  const stageRow = (st, i, n, act) => `
+    <div class="srow">
+      <input type="hidden" name="key" value="${esc(st.key)}">
+      <input class="nm" name="l_${esc(st.key)}" value="${esc(st.label)}" aria-label="단계 이름">
+      <input type="number" min="0" max="100" class="wt" name="w_${esc(st.key)}"
+             value="${Number(st.weight) || 0}" data-w="${esc(st.key)}"
+             aria-label="${esc(st.label)} 가중치">
+      <span class="pc">%</span>
+      <span class="spacer"></span>
+      <button class="btn ghost sm" formaction="${act}/move" name="move" value="${esc(st.key)}:-1"
+              formnovalidate${i === 0 ? ' disabled' : ''}>↑</button>
+      <button class="btn ghost sm" formaction="${act}/move" name="move" value="${esc(st.key)}:1"
+              formnovalidate${i === n - 1 ? ' disabled' : ''}>↓</button>
+      <button class="btn danger sm" formaction="${act}/delete" name="remove" value="${esc(st.key)}"
+              formnovalidate
+              onclick="return confirm('&quot;${jsq(st.label)}&quot; 단계를 지울까요?${
+                act === '/series/stage' ? ' 넣어 둔 진행률도 함께 사라집니다.' : ''}')">삭제</button>
+    </div>`
+
+  const sumRow = (total, right) => `
+    <div class="wsum${total === 100 ? '' : ' bad'}" data-wsum>
+      <span>합계</span><b data-wtotal>${total}</b><span>%</span>
+      <span class="why" data-wwhy>${
+        total === 100 ? '' : total === 0
+          ? '합이 0이면 총 진행률도 0이 됩니다.'
+          : `100이 아니어도 저장됩니다. 실제 합(${total})으로 나눠 셈합니다.`
+      }</span>
+      ${right || ''}
+    </div>`
 
   const body = `
 <div class="head"><div><h1>개발현황</h1>
-  <p>단계별 진행률을 넣으면 총 진행률이 가중치대로 계산됩니다.</p></div></div>
+  <p>시리즈마다 단계와 가중치를 따로 잡습니다.</p></div></div>
 
 ${
   series.length
-    ? `<form method="post" action="/series">
-  ${series.map((s, i) => `
+    ? series.map((s, i) => `
   <div class="card" data-series>
+    <form method="post" action="/series">
+    <input type="hidden" name="name" value="${esc(s.name)}">
     <div class="chead">
       <h2>${esc(s.name)}</h2>
       <div class="row">
         <span class="pill" data-total style="background:${s.color || '#8e8e93'}">${s.total}%</span>
-        <input type="hidden" name="name" value="${esc(s.name)}">
         ${colorSelect(s.name, s.color)}
         <button class="btn ghost sm" formaction="/series/move" name="move" value="${esc(s.name)}:-1"
                 formnovalidate${i === 0 ? ' disabled' : ''}>↑</button>
@@ -561,10 +594,34 @@ ${
                 onclick="return confirm('&quot;${jsq(s.name)}&quot; 을(를) 지울까요? 보고서 막대에서 빠집니다.')">삭제</button>
       </div>
     </div>
-    <div class="grid">${stageInputs(s)}</div>
-    <p class="count" style="margin:0">${s.updated_at ? s.updated_at.slice(0, 10) + ' 갱신' : '아직 저장 전'}</p>
-  </div>`).join('')}
-</form>`
+    ${
+      s.stages.length
+        ? `<div class="grid">${valueInputs(s)}</div>`
+        : '<p class="empty">단계가 없습니다. 아래에서 추가하거나 기본값을 불러오세요.</p>'
+    }
+    <details class="shhelp spanel">
+      <summary>단계와 가중치 <span class="count">${s.stages.length}단계</span></summary>
+      <div class="mbox">
+        <p class="mlead">이 시리즈의 단계 목록입니다. 더하고 빼고 이름을 고쳐도
+          <b>다른 시리즈는 그대로입니다.</b></p>
+        ${s.stages.map((st, j) => stageRow(st, j, s.stages.length, '/series/stage')).join('')}
+        <div class="newrow">
+          <span class="lbl">이 시리즈에 단계 추가</span>
+          <div class="row">
+            <input class="nm" name="label" placeholder="예: 표지 디자인">
+            <button class="btn ghost" formaction="/series/stage/new" formnovalidate>추가</button>
+          </div>
+        </div>
+        ${sumRow(sum(s.stages), `<span class="right">
+          <button class="btn ghost sm" formaction="/series/stage/reset" formnovalidate
+                  onclick="return confirm('이 시리즈의 단계를 기본 목록으로 바꿀까요? 기본 목록에 없는 단계와 그 진행률은 사라집니다.')">기본값 불러오기</button>
+        </span>`)}
+      </div>
+    </details>
+    <p class="count" style="margin:12px 0 0">${
+      s.updated_at ? s.updated_at.slice(0, 10) + ' 갱신' : '아직 저장 전'}</p>
+    </form>
+  </div>`).join('')
     : '<p class="empty">시리즈가 없습니다. 아래 [시리즈 추가]에서 입력하세요.</p>'
 }
 
@@ -576,7 +633,7 @@ ${
       ? `<div class="bars">
     ${series.map((s) => {
       const c = s.color || SERIES_COLOR[s.name] || '#378ADD'
-      return `<div class="bar">
+      return `<div class="bar" data-bar="${esc(s.name)}">
         <div class="v" style="color:${c}">${s.total}%</div>
         <div class="stem" style="background:${c};height:${barHeight(s.total)}px"></div>
         <div class="n">${esc(s.name)}</div></div>`
@@ -595,19 +652,56 @@ ${
   </form>
 </div>
 
+<details class="shhelp mgr">
+  <summary>기본 단계 목록</summary>
+  <div class="mbox">
+    <form method="post" action="/series/preset">
+      <p class="mlead"><b>새로 만드는 시리즈가 물려받을 본</b>입니다. 여기를 고쳐도
+        이미 있는 시리즈는 바뀌지 않습니다 — 각 시리즈의 [단계와 가중치]에서
+        <b>기본값 불러오기</b>를 눌러야 따라옵니다.</p>
+      ${presets.map((st, i) => stageRow(st, i, presets.length, '/series/preset')).join('')}
+      <div class="newrow">
+        <span class="lbl">새 단계 추가</span>
+        <div class="row">
+          <input class="nm" name="label" placeholder="예: 표지 디자인">
+          <button class="btn ghost" formaction="/series/preset/new" formnovalidate>추가</button>
+        </div>
+      </div>
+      ${sumRow(sum(presets), '<span class="right"><button class="btn plain sm">저장</button></span>')}
+    </form>
+  </div>
+</details>
+
 <script>
 // 저장하기 전에도 총 진행률이 바로 보이도록 화면에서 같은 식으로 계산한다.
+// 몫이 0인 단계는 값 칸을 흐리게 해 셈에 들지 않는다는 것을 알린다.
 document.querySelectorAll('[data-series]').forEach(function (card) {
-  var badge = card.querySelector('[data-total]')
-  var inputs = card.querySelectorAll('input[data-w]')
   function paint() {
-    var sum = 0
-    inputs.forEach(function (el) { sum += (Number(el.value) || 0) * Number(el.dataset.w) })
-    badge.textContent = Math.round(sum) + '%'
+    var sum = 0, got = 0
+    card.querySelectorAll('input[data-w]').forEach(function (w) {
+      var k = w.dataset.w, weight = Math.max(0, Number(w.value) || 0)
+      sum += weight
+      var v = card.querySelector('input[data-v="' + k + '"]')
+      if (v && v.value !== '') got += (Number(v.value) || 0) * weight
+      var cell = card.querySelector('[data-cell="' + k + '"]')
+      if (cell) {
+        cell.classList.toggle('off', weight === 0)
+        cell.querySelector('.wtag').textContent = weight + '%'
+      }
+    })
+    var pct = sum ? Math.round(got / sum) : 0
+    card.querySelector('[data-total]').textContent = pct + '%'
+    var box = card.querySelector('[data-wsum]')
+    if (!box) return
+    box.classList.toggle('bad', sum !== 100)
+    box.querySelector('[data-wtotal]').textContent = sum
+    box.querySelector('[data-wwhy]').textContent =
+      sum === 100 ? '' : sum === 0 ? '합이 0이면 총 진행률도 0이 됩니다.'
+        : '100이 아니어도 저장됩니다. 실제 합(' + sum + ')으로 나눠 셈합니다.'
   }
-  inputs.forEach(function (el) { el.addEventListener('input', paint) })
+  card.addEventListener('input', paint)
 })
-</script>`
+<\/script>`
   return page({ title: '개발현황', path: '/series', body })
 }
 

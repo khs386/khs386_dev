@@ -152,24 +152,95 @@ test('주간 보고서는 이미 완결 문서라 감싸지 않는다', () => {
 
 /* ── 시리즈 총 진행률 ─────────────────────────────────────── */
 
-test('총 진행률이 노션 수식과 같은 값을 낸다', async () => {
-  const { STAGES, seriesTotal } = await import('../src/lib/series.js')
-  const row = (vals) => Object.fromEntries(STAGES.map((s, i) => [s.key, vals[i]]))
+// 단계와 몫은 이제 시리즈마다 DB에 담긴다. 여기서는 기본 목록
+// (migrations/0014_stage_presets_seed.sql)과 같은 값을 놓고 검산한다.
+const PRESET = [
+  ['plan', 5], ['topic', 10], ['volume', 10], ['text', 15], ['art', 25],
+  ['appendix', 10], ['appendix_art', 10], ['audio', 5], ['review', 5], ['saypen', 5],
+]
+const withValues = (vals, weights) =>
+  PRESET.map(([key, w], i) => ({
+    key, label: key, weight: weights ? weights[i] : w, value: vals[i],
+  }))
 
-  // 가중치 합은 1.00이어야 한다
-  assert.equal(Number(STAGES.reduce((a, s) => a + s.weight, 0).toFixed(2)), 1)
+test('기본 가중치가 노션 수식과 같은 값을 낸다', async () => {
+  const { seriesTotal, weightSum } = await import('../src/lib/series.js')
+
+  // 기본 목록의 몫 합은 100이어야 한다
+  assert.equal(weightSum(withValues([])), 100)
 
   // 노션 [시리즈별 개발 현황] 실제 값으로 검산
-  //           기획 주제 권별 본문 그림 부록 부록그림 음원 감수 세이펜
-  assert.equal(seriesTotal(row([100, 100, 100, 100, 100, 100, 20, 10, 10, 10])), 79)
-  assert.equal(seriesTotal(row([100, 100, 100, 100, null, null, null, null, null, null])), 40)
-  assert.equal(seriesTotal(row([100, 100, 100, 15, null, 100, 100, 100, 100, 100])), 62)
-  assert.equal(seriesTotal(row([100, 100, 100, 100, 100, 100, 100, 100, 100, 100])), 100)
-  assert.equal(seriesTotal(row([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])), 0)
+  //                        기획 주제 권별 본문 그림 부록 부록그림 음원 감수 세이펜
+  assert.equal(seriesTotal(withValues([100, 100, 100, 100, 100, 100, 20, 10, 10, 10])), 79)
+  assert.equal(seriesTotal(withValues([100, 100, 100, 100, null, null, null, null, null, null])), 40)
+  assert.equal(seriesTotal(withValues([100, 100, 100, 15, null, 100, 100, 100, 100, 100])), 62)
+  assert.equal(seriesTotal(withValues([100, 100, 100, 100, 100, 100, 100, 100, 100, 100])), 100)
+  assert.equal(seriesTotal(withValues([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])), 0)
+})
+
+test('몫을 고치면 총 진행률도 따라 움직인다', async () => {
+  const { seriesTotal } = await import('../src/lib/series.js')
+  const vals = [100, 100, 100, 15, null, 100, 100, 100, 100, 100]   // 꼬마 일력
+  assert.equal(seriesTotal(withValues(vals)), 62)
+  // 본문 그림(25)을 빼서 합이 75가 되면 남은 단계의 비중이 커진다
+  const lighter = [5, 10, 10, 15, 0, 10, 10, 5, 5, 5]
+  assert.equal(seriesTotal(withValues(vals, lighter)), 83)
+})
+
+test('몫의 합이 100이 아니어도 0~100 안에 머문다', async () => {
+  const { seriesTotal } = await import('../src/lib/series.js')
+  const full = [100, 100, 100, 100, 100, 100, 100, 100, 100, 100]
+  // 다 채웠으면 합이 얼마든 100이다. 실제 합으로 나누기 때문이다.
+  assert.equal(seriesTotal(withValues(full, [1, 1, 1, 1, 1, 1, 1, 1, 1, 1])), 100)
+  assert.equal(seriesTotal(withValues(full, [9, 9, 9, 9, 9, 9, 9, 9, 9, 9])), 100)
+  const half = [100, 100, 100, 100, 100, null, null, null, null, null]
+  const w = [10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+  assert.equal(seriesTotal(withValues(half, w)), 50)
+})
+
+test('몫이 0인 단계는 셈에 들지 않는다', async () => {
+  const { seriesTotal } = await import('../src/lib/series.js')
+  // 그 단계에 100을 넣어 두어도 몫이 0이면 총 진행률이 움직이지 않는다.
+  const w = [50, 50, 0, 0, 0, 0, 0, 0, 0, 0]
+  assert.equal(seriesTotal(withValues([100, 0, 100, 100, 100, null, null, null, null, null], w)), 50)
+})
+
+test('몫의 합이 0이면 0을 낸다', async () => {
+  const { seriesTotal } = await import('../src/lib/series.js')
+  const w = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  // 0으로 나누지 않는다. 예전에 적어 둔 값이 있으면 그것을 쓴다.
+  assert.equal(seriesTotal(withValues([100, 100, 100, 100, 100, 100, 100, 100, 100, 100], w)), 0)
+  assert.equal(seriesTotal(withValues([100, 100, 100, 100, 100, 100, 100, 100, 100, 100], w), 62), 62)
 })
 
 test('단계를 하나도 넣지 않으면 예전에 직접 넣은 값을 쓴다', async () => {
   const { seriesTotal } = await import('../src/lib/series.js')
-  assert.equal(seriesTotal({ total_progress: 62 }), 62)
-  assert.equal(seriesTotal({ total_progress: 62, plan: 100 }), 5)
+  const empty = withValues([null, null, null, null, null, null, null, null, null, null])
+  assert.equal(seriesTotal(empty, 62), 62)
+  assert.equal(seriesTotal([], 62), 62)
+  assert.equal(seriesTotal(null, 62), 62)
+  // 하나라도 넣었으면 그때부터는 단계값으로 셈한다.
+  assert.equal(seriesTotal(withValues([100, null, null, null, null, null, null, null, null, null]), 62), 5)
 })
+
+test('단계 열쇠는 폼 칸 이름으로 쓸 수 있는 글자만 받는다', async () => {
+  const { STAGE_KEY, newStageKey, clampPct, clampWeight } =
+    await import('../src/lib/series.js')
+  assert.ok(STAGE_KEY.test('plan'))
+  assert.ok(STAGE_KEY.test('appendix_art'))
+  assert.ok(STAGE_KEY.test(newStageKey()))
+  assert.ok(!STAGE_KEY.test('a b'))
+  assert.ok(!STAGE_KEY.test('a-b'))
+  assert.ok(!STAGE_KEY.test(''))
+
+  // 진행률은 안 넣은 것(null)과 0을 구별한다. 몫은 그런 구별이 없다.
+  assert.equal(clampPct(''), null)
+  assert.equal(clampPct(null), null)
+  assert.equal(clampPct(0), 0)
+  assert.equal(clampPct(140), 100)
+  assert.equal(clampPct(-5), 0)
+  assert.equal(clampWeight(''), 0)
+  assert.equal(clampWeight(-3), 0)
+  assert.equal(clampWeight(140), 100)
+})
+

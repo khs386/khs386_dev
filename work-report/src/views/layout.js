@@ -278,6 +278,32 @@ nav.top .right{margin-left:auto}
 .bnum li.more{color:var(--text-3)}
 .bnum li.more::before{content:''}
 /* 계정별 소계. 옆 칸의 합계와 같이 읽는 숫자라 딱지 글자를 키워 놓았다. */
+/* 개발현황 — 단계와 가중치 손보는 자리. 법인카드의 [항목 관리]와 같은 결이다. */
+.spanel,.mgr{margin-top:14px}
+.spanel .mbox,.mgr .mbox{margin:10px 0 0; padding:16px 18px; border:1px solid var(--sep-soft);
+  border-radius:11px; background:var(--fill)}
+.spanel .mlead,.mgr .mlead{margin:0 0 14px; font-size:13px; color:var(--text-3)}
+.spanel .mlead b,.mgr .mlead b{color:var(--text)}
+.srow{display:flex; gap:10px; align-items:center; padding:9px 0;
+  border-top:1px solid var(--sep)}
+.srow:first-of-type{border-top:0}
+.srow .nm{flex:0 1 300px; max-width:300px}
+.srow .wt{flex:0 0 auto; width:84px; text-align:right}
+.srow .pc{font-size:13px; color:var(--text-3); margin-left:-4px}
+.newrow{margin-top:14px; padding-top:14px; border-top:1px solid var(--sep)}
+.newrow .lbl{display:block; font-size:12px; color:var(--text-3); margin-bottom:8px}
+.newrow .nm{flex:0 1 300px}
+.wsum{display:flex; align-items:center; gap:10px; margin-top:14px; padding-top:14px;
+  border-top:1px solid var(--sep); font-size:14px; flex-wrap:wrap}
+.wsum b{font-size:19px; font-variant-numeric:tabular-nums}
+.wsum.bad b{color:var(--orange)}
+.wsum .why{color:var(--text-3); font-size:13px}
+.wsum .right{margin-left:auto; display:flex; gap:8px}
+.wtag{opacity:.6}
+/* 몫이 0인 단계는 그 시리즈에서 셈에 들지 않는다. */
+.fld.off label{opacity:.4}
+.fld.off input{opacity:.45; background:var(--fill)}
+.fld.off .wtag{color:var(--orange); opacity:1}
 .accs{display:flex; gap:7px; flex-wrap:wrap; margin-top:6px}
 .accs .tag{font-size:14px; padding:4px 12px; font-variant-numeric:tabular-nums}
 .accs .tag b{font-weight:600; color:var(--text); margin-left:2px}

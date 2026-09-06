@@ -1,31 +1,48 @@
-// 시리즈 개발 단계와 가중치.
-// 노션 [시리즈별 개발 현황]의 '총 진행률 (%)' 수식을 그대로 옮긴 것이다.
-//   round(초기기획*0.05 + 주제선별*0.10 + 권별구성*0.10 + 본문원고*0.15 + 본문그림*0.25
-//       + 부록구성*0.10 + 부록그림*0.10 + 음원녹음*0.05 + 감수*0.05 + 세이펜망작업*0.05)
-// 가중치 합은 1.00이다. 비어 있는 단계는 0으로 본다.
+// 시리즈 총 진행률.
+//
+// 단계와 몫은 시리즈마다 다르다. 꼬마 일력에는 본문 그림이 없고, 뒤집기에는 있다.
+// 그래서 셈에 쓰는 몫은 코드가 아니라 그 시리즈의 단계 목록에서 온다.
+//
+// 처음 값은 노션 [시리즈별 개발 현황]의 '총 진행률 (%)' 수식에서 가져왔다
+// (migrations/0014_stage_presets_seed.sql). 그 몫으로 세 시리즈가 79 / 40 / 62를 낸다.
 
-export const STAGES = [
-  { key: 'plan',         label: '초기 기획',      weight: 0.05 },
-  { key: 'topic',        label: '주제 선별',      weight: 0.1 },
-  { key: 'volume',       label: '권별 구성',      weight: 0.1 },
-  { key: 'text',         label: '본문 원고',      weight: 0.15 },
-  { key: 'art',          label: '본문 그림',      weight: 0.25 },
-  { key: 'appendix',     label: '부록 구성',      weight: 0.1 },
-  { key: 'appendix_art', label: '부록 그림',      weight: 0.1 },
-  { key: 'audio',        label: '음원 녹음',      weight: 0.05 },
-  { key: 'review',       label: '감수',           weight: 0.05 },
-  { key: 'saypen',       label: '세이펜 망 작업', weight: 0.05 },
-]
+/** 단계 이름은 폼 칸 이름으로도 쓰이므로 글자와 숫자, 밑줄만 허용한다. */
+export const STAGE_KEY = /^[A-Za-z0-9_]{1,40}$/
 
-/** 단계가 하나라도 입력돼 있는가. 하나도 없으면 예전에 직접 넣은 총 진행률을 쓴다. */
-export function hasStages(row) {
-  return STAGES.some((s) => row[s.key] !== null && row[s.key] !== undefined && row[s.key] !== '')
-}
+/** 새 단계의 열쇠. 이름을 고쳐도 열쇠는 그대로여서 값이 따라 움직인다. */
+export const newStageKey = () =>
+  's' + crypto.randomUUID().replace(/-/g, '').slice(0, 12)
 
-/** 총 진행률(%). 노션 수식과 같은 값을 낸다. */
-export function seriesTotal(row) {
-  if (!row) return 0
-  if (!hasStages(row)) return Number(row.total_progress) || 0
-  const sum = STAGES.reduce((acc, s) => acc + (Number(row[s.key]) || 0) * s.weight, 0)
-  return Math.round(sum)
+const num = (v) => (v === '' || v === null || v === undefined ? null : Number(v))
+
+/** 진행률은 0~100 사이. 비어 있으면 아직 손대지 않은 것이라 null로 둔다. */
+export const clampPct = (v) =>
+  num(v) === null ? null : Math.max(0, Math.min(100, Math.round(Number(v) || 0)))
+
+/** 몫은 0 아래로 내려가지 않는다. */
+export const clampWeight = (v) => Math.max(0, Math.min(100, Math.round(Number(v) || 0)))
+
+/** 몫의 합. 100이 아니어도 막지 않는다 — 고치는 도중에는 반드시 어긋난다. */
+export const weightSum = (stages) =>
+  (stages || []).reduce((a, s) => a + clampWeight(s.weight), 0)
+
+/** 값을 하나라도 넣었는가. 아무것도 넣지 않았으면 예전에 직접 적던 값을 쓴다. */
+export const hasValues = (stages) =>
+  (stages || []).some((s) => num(s.value) !== null)
+
+/**
+ * 총 진행률.
+ *
+ * 몫의 합으로 나눈다. 합이 100이 아니어도 0~100 안에 머물게 하려는 것이고,
+ * 단계를 하나 빼면 그 몫만큼 분모도 줄어 남은 단계의 비중이 커진다 — 애초에
+ * 하지 않는 작업이라면 그 편이 실제에 가깝다.
+ *
+ * fallback은 단계가 생기기 전에 손으로 적어 두던 값(series_progress.total_progress)이다.
+ */
+export function seriesTotal(stages, fallback = 0) {
+  const list = stages || []
+  const sum = weightSum(list)
+  if (!sum || !hasValues(list)) return Number(fallback) || 0
+  const got = list.reduce((a, s) => a + (num(s.value) || 0) * clampWeight(s.weight), 0)
+  return Math.round(got / sum)
 }

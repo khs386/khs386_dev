@@ -1,6 +1,6 @@
 // D1 접근. SQLite에는 배열·불리언 타입이 없어서 여기서 앱이 쓰는 모양으로 바꿔 준다.
 
-import { STAGES, seriesTotal } from './series.js'
+import { seriesTotal, clampPct, clampWeight, newStageKey } from './series.js'
 
 const uuid = () => crypto.randomUUID()
 const bool = (v) => (v ? 1 : 0)
@@ -298,13 +298,33 @@ export async function deleteWeeklyItem(db, id) {
 
 /* ── 시리즈 진행률 ─────────────────────────────────────── */
 
+/**
+ * 시리즈 목록. 각자의 단계를 함께 싣는다.
+ *
+ * 총 진행률은 저장된 값이 아니라 단계값으로 매번 계산한다. 몫을 고치면 다시
+ * 저장하지 않아도 바로 반영된다.
+ */
 export async function listSeries(db) {
-  const { results } = await db
-    .prepare('select * from series_progress order by sort_order')
-    .all()
-  // 총 진행률은 저장된 값이 아니라 단계값으로 매번 계산한다
-  return (results || []).map((r) => ({ ...r, total: seriesTotal(r) }))
+  const [{ results: rows }, { results: stages }] = await Promise.all([
+    db.prepare('select * from series_progress order by sort_order').all(),
+    db.prepare('select * from series_stages order by series_name, sort_order').all(),
+  ])
+  const byName = new Map()
+  for (const st of stages || []) {
+    if (!byName.has(st.series_name)) byName.set(st.series_name, [])
+    byName.get(st.series_name).push(st)
+  }
+  return (rows || []).map((r) => {
+    const own = byName.get(r.name) || []
+    return { ...r, stages: own, total: seriesTotal(own, r.total_progress) }
+  })
 }
+
+/* 기본 단계 목록 — 새 시리즈가 물려받는 본 */
+
+export const listStagePresets = (db) =>
+  db.prepare('select * from stage_presets order by sort_order, label').all()
+    .then((r) => r.results || [])
 
 /** 화면에서 고를 수 있는 색. 보고서 막대에 그대로 쓰인다. */
 export const SERIES_PALETTE = [
@@ -323,11 +343,35 @@ export async function createSeries(db, name, color) {
     .prepare('insert into series_progress (name, total_progress, sort_order, color) values (?, 0, ?, ?)')
     .bind(clean, (last?.m || 0) + 1, color || SERIES_PALETTE[0][1])
     .run()
+  // 단계 목록은 기본 목록을 그대로 물려받는다. 이후로는 이 시리즈만의 것이라
+  // 기본 목록을 고쳐도 따라오지 않는다.
+  const presets = await listStagePresets(db)
+  if (presets.length) await putStages(db, clean, presets)
   return { ok: true, name: clean }
 }
 
+/** 시리즈의 단계 목록을 통째로 갈아 끼운다. 없던 단계는 지워진다. */
+async function putStages(db, name, stages) {
+  const stmts = [db.prepare('delete from series_stages where series_name = ?').bind(name)]
+  stages.forEach((st, i) => {
+    stmts.push(
+      db
+        .prepare(
+          `insert into series_stages (series_name, key, label, weight, value, sort_order)
+           values (?, ?, ?, ?, ?, ?)`
+        )
+        .bind(name, st.key, String(st.label || '').trim() || st.key,
+              clampWeight(st.weight), clampPct(st.value), i + 1)
+    )
+  })
+  await db.batch(stmts)
+}
+
 export async function deleteSeries(db, name) {
-  await db.prepare('delete from series_progress where name = ?').bind(name).run()
+  await db.batch([
+    db.prepare('delete from series_stages where series_name = ?').bind(name),
+    db.prepare('delete from series_progress where name = ?').bind(name),
+  ])
 }
 
 /** 위아래로 한 칸 옮긴다. */
@@ -349,25 +393,112 @@ export async function moveSeries(db, name, dir) {
   ])
 }
 
-const pct = (v) =>
-  v === '' || v === null || v === undefined ? null : Math.max(0, Math.min(100, Number(v) || 0))
+/**
+ * 시리즈 하나를 저장한다. 진행률·이름표·몫을 한꺼번에 받는다.
+ *
+ * total_progress에도 셈한 값을 넣어 둔다. 화면은 늘 단계값으로 다시 계산하므로
+ * 읽는 쪽에서 쓰이지는 않지만, 단계를 하나도 안 쓰던 시절의 값과 자리를 맞춰
+ * 두면 나중에 DB만 들여다볼 때 덜 헷갈린다.
+ */
+export async function saveSeries(db, name, { color, stages }) {
+  await putStages(db, name, stages)
+  await db
+    .prepare('update series_progress set total_progress = ?, color = ?, updated_at = ? where name = ?')
+    .bind(seriesTotal(stages), color || null, new Date().toISOString(), name)
+    .run()
+}
 
-export async function saveSeries(db, entries) {
-  const now = new Date().toISOString()
-  const cols = STAGES.map((s) => s.key)
-  const setSql = cols.map((k) => `${k} = ?`).join(', ')
-  await db.batch(
-    entries.map((e) => {
-      const values = cols.map((k) => pct(e[k]))
-      const row = Object.fromEntries(cols.map((k, i) => [k, values[i]]))
-      return db
-        .prepare(
-          `update series_progress set ${setSql}, total_progress = ?, color = ?, updated_at = ?
-           where name = ?`
-        )
-        .bind(...values, seriesTotal(row), e.color || null, now, e.name)
-    })
-  )
+/** 이 시리즈에만 단계를 더한다. 몫 0으로 들어가 지금 숫자를 흔들지 않는다. */
+export async function addSeriesStage(db, name, label) {
+  const clean = String(label || '').trim()
+  if (!clean) return { error: '단계 이름을 입력해 주세요.' }
+  const last = await db
+    .prepare('select max(sort_order) as m from series_stages where series_name = ?')
+    .bind(name)
+    .first()
+  await db
+    .prepare(
+      `insert into series_stages (series_name, key, label, weight, value, sort_order)
+       values (?, ?, ?, 0, null, ?)`
+    )
+    .bind(name, newStageKey(), clean, (last?.m || 0) + 1)
+    .run()
+  return { ok: true, label: clean }
+}
+
+export async function deleteSeriesStage(db, name, key) {
+  await db
+    .prepare('delete from series_stages where series_name = ? and key = ?')
+    .bind(name, key)
+    .run()
+}
+
+export async function moveSeriesStage(db, name, key, dir) {
+  const { results } = await db
+    .prepare('select key, sort_order from series_stages where series_name = ? order by sort_order')
+    .bind(name)
+    .all()
+  const list = results || []
+  const at = list.findIndex((x) => x.key === key)
+  const to = at + (dir < 0 ? -1 : 1)
+  if (at < 0 || to < 0 || to >= list.length) return
+  await db.batch([
+    db.prepare('update series_stages set sort_order = ? where series_name = ? and key = ?')
+      .bind(list[to].sort_order, name, list[at].key),
+    db.prepare('update series_stages set sort_order = ? where series_name = ? and key = ?')
+      .bind(list[at].sort_order, name, list[to].key),
+  ])
+}
+
+/** 이 시리즈의 단계를 기본 목록으로 갈아 끼운다. 이미 넣은 진행률은 살린다. */
+export async function resetSeriesStages(db, name) {
+  const [presets, { results }] = await Promise.all([
+    listStagePresets(db),
+    db.prepare('select key, value from series_stages where series_name = ?').bind(name).all(),
+  ])
+  const had = new Map((results || []).map((r) => [r.key, r.value]))
+  await putStages(db, name, presets.map((p) => ({ ...p, value: had.get(p.key) ?? null })))
+}
+
+/* 기본 단계 목록 손보기 — 이미 있는 시리즈는 건드리지 않는다 */
+
+export async function savePresets(db, rows) {
+  const stmts = [db.prepare('delete from stage_presets')]
+  rows.forEach((r, i) => {
+    stmts.push(
+      db
+        .prepare('insert into stage_presets (key, label, weight, sort_order) values (?, ?, ?, ?)')
+        .bind(r.key, String(r.label || '').trim() || r.key, clampWeight(r.weight), i + 1)
+    )
+  })
+  await db.batch(stmts)
+}
+
+export async function addPreset(db, label) {
+  const clean = String(label || '').trim()
+  if (!clean) return { error: '단계 이름을 입력해 주세요.' }
+  const last = await db.prepare('select max(sort_order) as m from stage_presets').first()
+  await db
+    .prepare('insert into stage_presets (key, label, weight, sort_order) values (?, ?, 0, ?)')
+    .bind(newStageKey(), clean, (last?.m || 0) + 1)
+    .run()
+  return { ok: true, label: clean }
+}
+
+export async function deletePreset(db, key) {
+  await db.prepare('delete from stage_presets where key = ?').bind(key).run()
+}
+
+export async function movePreset(db, key, dir) {
+  const { results } = await db.prepare('select key, sort_order from stage_presets order by sort_order').all()
+  const list = results || []
+  const at = list.findIndex((x) => x.key === key)
+  const to = at + (dir < 0 ? -1 : 1)
+  if (at < 0 || to < 0 || to >= list.length) return
+  await db.batch([
+    db.prepare('update stage_presets set sort_order = ? where key = ?').bind(list[to].sort_order, list[at].key),
+    db.prepare('update stage_presets set sort_order = ? where key = ?').bind(list[at].sort_order, list[to].key),
+  ])
 }
 
 /* ── 보고서 이력 ───────────────────────────────────────── */

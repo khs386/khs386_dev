@@ -30,7 +30,13 @@
     "db:cards-import": "wrangler d1 execute work-report --remote --file=./migrations/0011_card_notion_import.sql",
     "db:cards-import:local": "wrangler d1 execute work-report --local --file=./migrations/0011_card_notion_import.sql",
     "db:cards-post": "wrangler d1 execute work-report --remote --file=./migrations/0012_card_post_account.sql",
-    "db:cards-post:local": "wrangler d1 execute work-report --local --file=./migrations/0012_card_post_account.sql"
+    "db:cards-post:local": "wrangler d1 execute work-report --local --file=./migrations/0012_card_post_account.sql",
+    "db:stages": "wrangler d1 execute work-report --remote --file=./migrations/0013_series_stages.sql",
+    "db:stages:local": "wrangler d1 execute work-report --local --file=./migrations/0013_series_stages.sql",
+    "db:stages-seed": "wrangler d1 execute work-report --remote --file=./migrations/0014_stage_presets_seed.sql",
+    "db:stages-seed:local": "wrangler d1 execute work-report --local --file=./migrations/0014_stage_presets_seed.sql",
+    "db:stages-move": "wrangler d1 execute work-report --remote --file=./migrations/0015_series_stages_move.sql",
+    "db:stages-move:local": "wrangler d1 execute work-report --local --file=./migrations/0015_series_stages_move.sql"
   },
   "dependencies": {
     "hono": "^4.6.0"
