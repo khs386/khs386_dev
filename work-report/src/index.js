@@ -9,6 +9,7 @@ import {
 } from './lib/reports.js'
 import { weekStart } from './lib/report/format.js'
 import { monthOr, monthOf, monthStart, shiftMonth, koreanMonth, summarize } from './lib/cards.js'
+import { voucherSheets, voucherFilename, voucherDocument, voucherFile } from './lib/voucher.js'
 import { STAGES } from './lib/series.js'
 import { loginPage, FAVICON } from './views/layout.js'
 import { privacyPage, termsPage } from './views/legal.js'
@@ -542,6 +543,52 @@ app.post('/cards/items/move', async (c) => {
   const [kind, name, dir] = String(form.get('move') || '').split(':')
   if (kind && name) await db.moveCardItem(c.env.DB, kind, name, Number(dir) || 1)
   return c.redirect('/cards')
+})
+
+/* 지출결의서 — 고른 사용 내역을 결재에 올릴 서식으로 */
+
+/** ids=a,b,c 를 그 달 화면에 보이던 차례 그대로 읽는다. */
+async function pickedExpenses(env, raw) {
+  const want = String(raw || '').split(',').map((x) => x.trim()).filter(Boolean)
+  if (!want.length) return []
+  const rows = await Promise.all(want.map((id) => db.getExpense(env.DB, id)))
+  return rows.filter(Boolean)
+}
+
+app.get('/cards/voucher', async (c) => {
+  const ids = c.req.query('ids') || ''
+  const rows = await pickedExpenses(c.env, ids)
+  if (!rows.length) return c.redirect('/cards?t=err&msg=' + encodeURIComponent('고른 내역이 없습니다.'))
+  return html(c, voucherDocument(voucherSheets(rows), {
+    ids,
+    message: c.req.query('msg') || '',
+    error: c.req.query('t') === 'err',
+  }))
+})
+
+app.post('/cards/voucher/drive', async (c) => {
+  const form = await c.req.formData()
+  const ids = String(form.get('ids') || '')
+  const to = '/cards/voucher?ids=' + encodeURIComponent(ids)
+  try {
+    if (!driveConfigured(c.env)) throw new Error('구글 드라이브 설정이 없습니다.')
+    const rows = await pickedExpenses(c.env, ids)
+    if (!rows.length) throw new Error('고른 내역이 없습니다.')
+    const sheets = voucherSheets(rows)
+    // 장마다 파일 하나로 올린다. 결재는 장 단위로 올라가므로 한 파일에 여러
+    // 장을 담으면 나눠 낼 수가 없다.
+    const names = []
+    for (const sheet of sheets) {
+      const filename = voucherFilename(sheet)
+      await uploadHtml(c.env, {
+        filename, html: voucherFile(sheet), kind: 'voucher', date: sheet.issuedOn,
+      })
+      names.push(filename)
+    }
+    return back(c, to, `드라이브에 ${names.length}장을 저장했습니다.`)
+  } catch (e) {
+    return c.redirect(`${to}&t=err&msg=${encodeURIComponent(e.message)}`)
+  }
 })
 
 /* ── 보고서 ─────────────────────────────────────────────── */

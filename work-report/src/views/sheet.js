@@ -189,7 +189,10 @@ var COLS = {
   misc:    {k:'is_misc',   l:'기타',       w:54,  t:'check', a:'c'},
   output:  {k:'output',    l:'산출물',     w:160, t:'text'},
   note:    {k:'note',      l:'비고',       w:190, t:'text'},
-  // 법인카드. 사용일에는 D-day를 붙이지 않는다 — 이미 쓴 돈이라 남은 날이 없다.
+  // 법인카드. 지출결의서로 만들 줄을 고르는 칸이다. check와 똑같이 굴지만
+  // nosave가 붙어 서버로 가지 않는다 — 화면에서 고르는 값이지 기록이 아니다.
+  cpick:   {k:'_pick',     l:'',           w:38,  t:'check', a:'c', nosave:true},
+  // 사용일에는 D-day를 붙이지 않는다 — 이미 쓴 돈이라 남은 날이 없다.
   cday:    {k:'used_on',   l:'사용일',     w:104, t:'day',  a:'c'},
   ctitle:  {k:'title',     l:'세부 내역',  w:248, t:'text', ph:'여기에 입력하면 줄이 생깁니다'},
   cuser:   {k:'spender',   l:'사용자',     w:88,  t:'list', o:D.users, a:'c'},
@@ -460,6 +463,16 @@ document.addEventListener('change', function (ev) {
 document.addEventListener('click', function (ev) {
   var sv = ev.target.closest('[data-save-now]')
   if (sv) { saveAll(sv.getAttribute('data-save-now')); return }
+  // 고른 줄로 지출결의서를 뽑는다. 새 창에 띄우는 것은 종이에 나갈 문서라
+  // 앱 화면을 덮어쓰지 않는 편이 낫기 때문이다.
+  var vb = ev.target.closest('[data-voucher]')
+  if (vb) {
+    var vg = G[vb.getAttribute('data-voucher')]
+    var picked = vg.rows.filter(function (r) { return r._pick && r.id })
+    if (!picked.length) { toast('결의서로 만들 줄을 골라 주세요.'); return }
+    window.open('/cards/voucher?ids=' + picked.map(function (r) { return r.id }).join(','), '_blank')
+    return
+  }
   var ac = ev.target.closest('[data-addfields]')
   if (ac) {
     addFromFields(ac.closest('[data-addcard]'), ac.getAttribute('data-addfields'))
@@ -561,7 +574,10 @@ function save (id, row) {
   mark(id, 'busy', '저장 중…')
   chain = chain.then(function () {
     var body = {date: D.date, kind: g.kind || '', id: row.id || ''}
-    g.cols.forEach(function (c) { body[c.k] = row[c.k] === undefined ? '' : row[c.k] })
+    g.cols.forEach(function (c) {
+      if (c.nosave) return
+      body[c.k] = row[c.k] === undefined ? '' : row[c.k]
+    })
     body.task_id = row.task_id || ''
     return fetch(g.api + '/row', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -719,6 +735,8 @@ function put (id, r, c, val) {
       })
     }
   }
+  // 고르는 칸은 화면에만 있는 값이다. 판 번호도 올리지 않고 보내지도 않는다.
+  if (col.nosave) { draw(id); paint(); return }
   row._v = (row._v || 0) + 1
   draw(id); paint(); save(id, row)
 }

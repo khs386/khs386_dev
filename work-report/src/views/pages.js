@@ -874,7 +874,7 @@ export function cardsPage({ month, monthLabel, prev, next, rows, summary,
     grids: [{
       id: 'cards', api: '/api/cards', kind: '', move: false, sum: 'amount',
       needs: [['title', '세부 내역'], ['amount', '금액']],
-      cols: ['cday', 'ctitle', 'cuser', 'cshop', 'cwon', 'cacc', 'csettle', 'cnote'],
+      cols: ['cpick', 'cday', 'ctitle', 'cuser', 'cshop', 'cwon', 'cacc', 'csettle', 'cnote'],
       rows: rows.map(cardRow),
     }],
   }
@@ -932,6 +932,7 @@ export function cardsPage({ month, monthLabel, prev, next, rows, summary,
     <h2>사용 내역 추가</h2>
     <div class="row">
       <span class="count" data-count="cards">0건</span>
+      <button type="button" class="btn ghost sm" data-voucher="cards">지출결의서 만들기</button>
       <span class="shsave" data-save="cards"><span class="dot"></span><span class="txt">저장됨</span></span>
       <button type="button" class="shretry" data-save-now="cards" hidden>다시 저장</button>
     </div>

@@ -44,7 +44,7 @@ async function accessToken(env) {
 }
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder'
-const KIND_NAME = { daily: '일일', weekly: '주간' }
+const KIND_NAME = { daily: '일일', weekly: '주간', voucher: '지출결의서' }
 
 const DRIVE_API = 'https://www.googleapis.com/drive/v3/files'
 const SHARED = 'supportsAllDrives=true&includeItemsFromAllDrives=true'
