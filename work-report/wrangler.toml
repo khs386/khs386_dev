@@ -9,8 +9,10 @@ workers_dev = true
 [[d1_databases]]
 binding = "DB"
 database_name = "work-report"
-# wrangler d1 create work-report 로 만든 뒤 나오는 id를 여기에 붙여넣는다.
-database_id = "여기에_D1_데이터베이스_ID"
+# wrangler d1 create work-report 로 만들 때 나온 id다. 비밀이 아니라 계정 안에서
+# 이 DB를 가리키는 이름표라 그대로 커밋한다 — 값을 알아도 계정 토큰 없이는 닿지
+# 못한다. 잃어버렸으면 wrangler d1 list 로 다시 찾는다.
+database_id = "4ee60280-07d6-437b-9803-2fc6405fbe97"
 
 # 시각은 UTC 기준. 한국 시각에서 9시간을 뺀 값이다.
 # 주말·공휴일은 코드가 판단해 건너뛴다.
