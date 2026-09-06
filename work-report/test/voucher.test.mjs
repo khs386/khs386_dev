@@ -3,7 +3,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
-  koreanMoney, koreanDate, voucherSheets, voucherFilename, ROWS_PER_SHEET,
+  koreanMoney, koreanDate, voucherSheets, voucherFilename, voucherFile, ROWS_PER_SHEET,
 } from '../src/lib/voucher.js'
 
 const row = (used_on, title, amount, account, spender) =>
@@ -106,4 +106,26 @@ test('파일 이름은 날짜가 앞에 오고 파일명에 못 쓰는 글자를
 test('날짜 표기는 결의서 서식을 따른다', () => {
   assert.equal(koreanDate('2026-09-01'), '2026년 9월 1일')
   assert.equal(koreanDate('2026-12-25'), '2026년 12월 25일')
+})
+
+test('내역 줄의 비고를 서식에 담는다', () => {
+  const sheet = voucherSheets([
+    { ...row('2026-08-31', '꼬마생각 편집회의', 31100, '회의비', '권호상'),
+      note: '회의실 예약으로 외부 진행' },
+    { ...row('2026-08-18', '꼬마생각 편집회의', 35300, '회의비', '권호상'), note: '' },
+  ])[0]
+  const html = voucherFile(sheet)
+  assert.match(html, /회의실 예약으로 외부 진행/)
+  // 비고가 없는 줄과 빈 줄은 빈 칸으로 남는다. 세 줄 서식이라 줄 수는 늘 셋이다.
+  assert.equal((html.match(/class="memo"/g) || []).length, ROWS_PER_SHEET)
+})
+
+test('비고에 든 홑화살괄호는 글자로 나간다', () => {
+  // 세부 내역에 '<인공지능>' 같은 제목을 적는 사람이다. 서식이 깨지면 안 된다.
+  const sheet = voucherSheets([
+    { ...row('2026-09-01', '검수', 1000, '기타', '권호상'), note: '<발레> 건' },
+  ])[0]
+  const html = voucherFile(sheet)
+  assert.match(html, /&lt;발레&gt; 건/)
+  assert.doesNotMatch(html, /<발레>/)
 })
