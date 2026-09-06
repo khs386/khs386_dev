@@ -185,7 +185,7 @@ var COLS = {
   pct:     {k:'progress',  l:'진행률',     w:98,  t:'pct',  a:'c'},
   due:     {k:'deadline',  l:'마감 시한',  w:128, t:'date', a:'c'},
   duew:    {k:'due_date',  l:'종결 예정일',w:128, t:'date', a:'c'},
-  detail:  {k:'detail_text', l:'세부내용 (줄바꿈 = 글머리 하나)', w:320, t:'multi'},
+  detail:  {k:'detail_text', l:'세부내용 (줄바꿈 = 자동 글머리)', w:320, t:'multi'},
   misc:    {k:'is_misc',   l:'기타',       w:54,  t:'check', a:'c'},
   output:  {k:'output',    l:'산출물',     w:160, t:'text'},
   note:    {k:'note',      l:'비고',       w:190, t:'text'},

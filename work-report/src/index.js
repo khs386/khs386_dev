@@ -327,6 +327,13 @@ app.post('/api/weekly/row', async (c) => {
   return c.json({ ok: true, row: weeklyRow(await db.getWeeklyItem(c.env.DB, id)) })
 })
 
+app.post('/api/weekly/move', async (c) => {
+  const b = await c.req.json().catch(() => ({}))
+  if (!b.id) return c.json({ ok: false }, 400)
+  await db.moveWeeklyItem(c.env.DB, b.id, Number(b.dir) || 1)
+  return c.json({ ok: true })
+})
+
 app.post('/api/weekly/delete', async (c) => {
   const b = await c.req.json().catch(() => ({}))
   if (!b.id) return c.json({ ok: false }, 400)

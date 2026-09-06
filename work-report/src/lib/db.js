@@ -296,6 +296,38 @@ export async function deleteWeeklyItem(db, id) {
   await db.prepare('delete from weekly_items where id = ?').bind(id).run()
 }
 
+/**
+ * 주간 항목의 줄을 위아래로 옮긴다.
+ *
+ * 전주 실적과 금주 예정은 표가 따로라 sort_order도 0부터 따로 매겨진다.
+ * 같은 kind 안에서만 이웃을 찾아야 두 표가 서로 자리를 바꾸지 않는다.
+ *
+ * 이웃과 값만 맞바꾸지 않고 그 kind를 통째로 다시 매긴다. 줄을 지우고 새로
+ * 넣으면 sort_order가 겹치는 일이 생기는데, 겹친 둘을 맞바꾸면 아무 일도
+ * 일어나지 않아 '눌러도 안 움직인다'가 된다.
+ */
+export async function moveWeeklyItem(db, id, dir) {
+  const row = await db.prepare('select * from weekly_items where id = ?').bind(id).first()
+  if (!row) return
+  const { results } = await db
+    .prepare(
+      `select id from weekly_items where week_start = ? and kind = ?
+        order by sort_order, created_at`
+    )
+    .bind(row.week_start, row.kind)
+    .all()
+  const list = (results || []).map((r) => r.id)
+  const at = list.indexOf(id)
+  const to = at + (dir < 0 ? -1 : 1)
+  if (at < 0 || to < 0 || to >= list.length) return
+  list[at] = list[to]
+  list[to] = id
+  await db.batch(
+    list.map((x, i) =>
+      db.prepare('update weekly_items set sort_order = ? where id = ?').bind(i, x))
+  )
+}
+
 /* ── 시리즈 진행률 ─────────────────────────────────────── */
 
 /**

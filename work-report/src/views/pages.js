@@ -498,12 +498,12 @@ export function weeklyPage({ date, weekStart, items, tasks, workTypes, today }) 
     types: workTypes.map((t) => ({ name: t.name, series: t.series || '' })),
     grids: [
       {
-        id: 'prev', api: '/api/weekly', kind: '전주 실적', move: false, oncePerDay: false,
+        id: 'prev', api: '/api/weekly', kind: '전주 실적', move: true, oncePerDay: false,
         cols: ['type', 'wtitle', 'statusw', 'pct', 'duew', 'output', 'note'],
         rows: byKind('전주 실적'),
       },
       {
-        id: 'plan', api: '/api/weekly', kind: '금주 예정', move: false, oncePerDay: false,
+        id: 'plan', api: '/api/weekly', kind: '금주 예정', move: true, oncePerDay: false,
         cols: ['type', 'wtitle', 'duew', 'note'],
         rows: byKind('금주 예정'),
       },
