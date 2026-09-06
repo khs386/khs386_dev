@@ -26,7 +26,9 @@
     "db:cards": "wrangler d1 execute work-report --remote --file=./migrations/0009_card_expenses.sql",
     "db:cards:local": "wrangler d1 execute work-report --local --file=./migrations/0009_card_expenses.sql",
     "db:cards-seed": "wrangler d1 execute work-report --remote --file=./migrations/0010_card_seed.sql",
-    "db:cards-seed:local": "wrangler d1 execute work-report --local --file=./migrations/0010_card_seed.sql"
+    "db:cards-seed:local": "wrangler d1 execute work-report --local --file=./migrations/0010_card_seed.sql",
+    "db:cards-import": "wrangler d1 execute work-report --remote --file=./migrations/0011_card_notion_import.sql",
+    "db:cards-import:local": "wrangler d1 execute work-report --local --file=./migrations/0011_card_notion_import.sql"
   },
   "dependencies": {
     "hono": "^4.6.0"
