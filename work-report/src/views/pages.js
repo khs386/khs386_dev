@@ -48,7 +48,9 @@ ${stale.length ? notice('시리즈 진행률이 아직 입력되지 않았습니
 ${briefCard(brief, today)}
 
 <div class="card">
-  <div class="chead"><h2>오늘 기록한 업무</h2><span class="count">${logs.length}건</span></div>
+  <div class="chead">
+    <h2>오늘 업무<span class="count">일일업무 보고서 기준</span></h2>
+    <span class="count">${logs.length}건</span></div>
   ${
     logs.length
       ? logs.map((l) => `<div class="item cols mine">
@@ -64,7 +66,7 @@ ${briefCard(brief, today)}
 <div class="card">
   <!-- 채울 말이 없으면 제목 줄 아래 여백까지 지운다. 빈 자리만 남기지 않는다. -->
   <div class="chead">
-    <h2>이번 주 현황<span class="count">지난 주에 적은 금주 예정</span></h2>
+    <h2>이번 주 현황<span class="count">주간업무 보고서 기준</span></h2>
     <span class="count">${plan.length}건</span></div>
   ${weekNote}
   ${
