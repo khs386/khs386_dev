@@ -925,7 +925,35 @@ const itemPanel = (kind, label, rows, hidden) => `
  * 계정이나 사람을 손볼 일은 몇 달에 한 번이라 화면을 늘 차지할 이유가 없다.
  * [표 쓰는 법]과 같은 글자 토글로 접어 둔다.
  */
-function manageBox({ accounts, users, settles }) {
+/** 반복 결제 한 줄. 고칠 것이 많아 이름표를 붙인 칸으로 늘어놓는다. */
+const recurRow = (r, accounts, users, settles) => `
+    <div class="item recur">
+      <input type="hidden" name="id" value="${esc(r.id)}">
+      <label class="chk flat"><input type="checkbox" name="on" value="${esc(r.id)}"${
+        r.enabled ? ' checked' : ''}> 씀</label>
+      <input name="t_${esc(r.id)}" value="${esc(r.title)}" class="rt" aria-label="이름">
+      <input name="m_${esc(r.id)}" value="${esc(r.merchant)}" class="rm"
+             aria-label="사용처" placeholder="사용처">
+      <input name="a_${esc(r.id)}" value="${Number(r.amount) || 0}" inputmode="numeric"
+             class="ra" aria-label="금액">
+      <select name="c_${esc(r.id)}" class="rc" aria-label="처리 계정">
+        <option value="">계정 없음</option>${accounts
+          .map((x) => `<option${x.name === r.account ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
+      <select name="s_${esc(r.id)}" class="rs" aria-label="사용자">
+        <option value="">사용자 없음</option>${users
+          .map((x) => `<option${x.name === r.spender ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
+      <input type="month" name="f_${esc(r.id)}" value="${esc(r.from_month || '')}"
+             class="rmo" aria-label="시작 달">
+      <span class="til">~</span>
+      <input type="month" name="e_${esc(r.id)}" value="${esc(r.to_month || '')}"
+             class="rmo" aria-label="끝 달">
+      <span class="spacer"></span>
+      <button class="btn danger sm" formaction="/cards/recurring/delete" name="remove"
+              value="${esc(r.id)}" formnovalidate
+              onclick="return confirm('&quot;${jsq(r.title)}&quot; 을(를) 반복 결제에서 뺄까요? 이미 넣은 사용 내역은 그대로 남습니다.')">삭제</button>
+    </div>`
+
+function manageBox({ accounts, users, settles, recurring }) {
   return `
 <details class="shhelp manage">
   <summary>항목 관리</summary>
@@ -935,10 +963,31 @@ function manageBox({ accounts, users, settles }) {
       <a href="#acc" data-t="account" class="on">처리 계정 <span class="count">${accounts.length}</span></a>
       <a href="#user" data-t="user">사용자 <span class="count">${users.length}</span></a>
       <a href="#settle" data-t="settle">정산상태 <span class="count">${settles.length}</span></a>
+      <a href="#recur" data-t="recur">반복 결제 <span class="count">${recurring.length}</span></a>
     </div>
     ${itemPanel('account', '처리 계정', accounts, false)}
     ${itemPanel('user', '사용자', users, true)}
     ${itemPanel('settle', '정산상태', settles, true)}
+    <div data-p="recur" hidden>
+      <form method="post" action="/cards/recurring">
+        <p class="mlead">달마다 빠짐없이 나가야 하는 지출입니다. 그 달에 <b>사용처가 같은
+          내역이 하나도 없으면</b> 위에 알려 줍니다 — 자동결제는 영수증이 눈에 띄지 않아
+          조용히 빠지기 때문입니다. 기간을 비우면 끝이 없다는 뜻입니다.</p>
+        ${recurring.length
+          ? recurring.map((r) => recurRow(r, accounts, users, settles)).join('')
+          : '<p class="empty">등록된 반복 결제가 없습니다.</p>'}
+        <div class="addrow">
+          <span class="lbl">새 반복 결제 추가</span>
+          <div class="row">
+            <input name="title" class="rt" placeholder="예: 셔터스톡 월 요금 자동 결제">
+            <input name="merchant" class="rm" placeholder="사용처 (예: 셔터스톡)">
+            <input name="amount" class="ra" inputmode="numeric" placeholder="금액">
+            <button class="btn ghost" formaction="/cards/recurring/new" formnovalidate>추가</button>
+          </div>
+        </div>
+        <div class="wsum"><span class="right"><button class="btn plain sm">저장</button></span></div>
+      </form>
+    </div>
   </div>
 </details>
 <script>
@@ -958,7 +1007,8 @@ function manageBox({ accounts, users, settles }) {
 }
 
 export function cardsPage({ month, monthLabel, prev, next, rows, summary,
-                            accounts, users, settles, presets, defaultDay }) {
+                            accounts, users, settles, presets, recurring, missing,
+                            defaultDay }) {
   const settleNames = settles.map((s) => s.name)
   const tints = {}
   for (const s of settles) tints[s.name] = CARD_COLORS[s.color] || '--gray'
@@ -1028,6 +1078,23 @@ export function cardsPage({ month, monthLabel, prev, next, rows, summary,
   </div>
 </div>
 
+${
+  missing.length
+    ? `<div class="note warn">
+  <b>${monthLabel}에 아직 안 들어온 반복 결제가 ${missing.length}건 있습니다.</b>
+  자동결제는 영수증이 눈에 띄지 않아 조용히 빠집니다.
+  <div class="miss">${missing.map((m) => `
+    <form method="post" action="/cards/recurring/add" class="row">
+      <input type="hidden" name="id" value="${esc(m.id)}">
+      <input type="hidden" name="month" value="${month}">
+      <span class="mt">${esc(m.title)}</span>
+      <span class="count">${esc(m.merchant)} · ${money(m.amount)}원</span>
+      <button class="btn ghost sm">이 달에 넣기</button>
+    </form>`).join('')}</div>
+</div>`
+    : ''
+}
+
 <div class="card" data-addcard="cards">
   <div class="chead">
     <h2>사용 내역 추가</h2>
@@ -1069,7 +1136,7 @@ export function cardsPage({ month, monthLabel, prev, next, rows, summary,
 </div>
 <div class="sheet" id="sh-cards"></div>
 ${SHEET_HELP}
-${manageBox({ accounts, users, settles })}
+${manageBox({ accounts, users, settles, recurring })}
 <noscript><p class="note err">이 화면은 자바스크립트가 켜져 있어야 씁니다.</p></noscript>
 ${jsonBlock('sheet-data', data)}
 ${SHEET_JS}`

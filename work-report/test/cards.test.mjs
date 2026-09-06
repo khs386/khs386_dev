@@ -91,3 +91,67 @@ test('빈 달도 0으로 답한다', () => {
   assert.deepEqual(s, { count: 0, total: 0, openTotal: 0, open: [], byAccount: [] })
   assert.equal(won(0), '0')
 })
+
+/* ── 반복 결제 ─────────────────────────────────────────── */
+
+const RECUR = [
+  { id: 'r-shutter', title: '셔터스톡', merchant: '셔터스톡', amount: 342100,
+    from_month: '2026-07', to_month: '2026-10', enabled: true },
+  { id: 'r-notion', title: 'Notion', merchant: 'Notion', amount: 39600,
+    from_month: null, to_month: null, enabled: true },
+]
+
+test('쓰는 기간 안에서만 따진다', async () => {
+  const { inMonthRange } = await import('../src/lib/cards.js')
+  assert.equal(inMonthRange('2026-06', '2026-07', '2026-10'), false)
+  assert.equal(inMonthRange('2026-07', '2026-07', '2026-10'), true)
+  assert.equal(inMonthRange('2026-10', '2026-07', '2026-10'), true)
+  assert.equal(inMonthRange('2026-11', '2026-07', '2026-10'), false)
+  // 비워 두면 끝이 없다.
+  assert.equal(inMonthRange('2020-01', null, null), true)
+  assert.equal(inMonthRange('2099-12', null, null), true)
+  assert.equal(inMonthRange('2026-11', '2026-07', null), true)
+  assert.equal(inMonthRange('2026-06', null, '2026-10'), true)
+})
+
+test('사용처가 같은 내역이 있으면 들어온 것으로 본다', async () => {
+  const { missingRecurring } = await import('../src/lib/cards.js')
+  // 노션 실제 기록: 6월에는 둘 다 있고 7월부터 없다.
+  const june = [
+    { used_on: '2026-06-29', merchant: '셔터스톡', amount: 342100 },
+    { used_on: '2026-06-01', merchant: 'Notion', amount: 39600 },
+  ]
+  assert.deepEqual(missingRecurring('2026-06', RECUR, june).map((r) => r.id), [])
+  // 6월은 셔터스톡 기간(7월~10월) 밖이지만 이미 들어와 있으므로 어차피 빠지지 않는다.
+  assert.deepEqual(missingRecurring('2026-07', RECUR, june).map((r) => r.id),
+    ['r-shutter', 'r-notion'])
+})
+
+test('세부 내역이 달라도 사용처가 같으면 들어온 것이다', async () => {
+  const { missingRecurring } = await import('../src/lib/cards.js')
+  // "6월 요금"이 "7월 요금"으로 바뀌어도 가맹점은 그대로다.
+  const rows = [{ used_on: '2026-08-01', title: 'Notion 8월 요금', merchant: 'Notion' }]
+  assert.deepEqual(missingRecurring('2026-08', RECUR, rows).map((r) => r.id), ['r-shutter'])
+})
+
+test('기간이 지나면 더는 찾지 않는다', async () => {
+  const { missingRecurring } = await import('../src/lib/cards.js')
+  // 셔터스톡은 10월까지만 구독한다. 11월에는 없어도 알리지 않는다.
+  assert.deepEqual(missingRecurring('2026-11', RECUR, []).map((r) => r.id), ['r-notion'])
+})
+
+test('꺼 둔 반복 결제는 따지지 않는다', async () => {
+  const { missingRecurring } = await import('../src/lib/cards.js')
+  const off = RECUR.map((r) => ({ ...r, enabled: false }))
+  assert.deepEqual(missingRecurring('2026-08', off, []), [])
+  // DB에서는 0/1로 온다.
+  const zero = RECUR.map((r) => ({ ...r, enabled: 0 }))
+  assert.deepEqual(missingRecurring('2026-08', zero, []), [])
+})
+
+test('반복 결제가 없거나 내역이 없어도 터지지 않는다', async () => {
+  const { missingRecurring } = await import('../src/lib/cards.js')
+  assert.deepEqual(missingRecurring('2026-08', [], []), [])
+  assert.deepEqual(missingRecurring('2026-08', null, null), [])
+  assert.equal(missingRecurring('2026-08', RECUR, null).length, 2)
+})

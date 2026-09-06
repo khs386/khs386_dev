@@ -304,6 +304,18 @@ nav.top .right{margin-left:auto}
 .fld.off label{opacity:.4}
 .fld.off input{opacity:.45; background:var(--fill)}
 .fld.off .wtag{color:var(--orange); opacity:1}
+/* 반복 결제 한 줄 — 고칠 것이 많아 칸을 좁게 잡아 한 줄에 세운다. */
+.item.recur{gap:7px}
+.item.recur .rt{flex:1 1 190px; min-width:150px}
+.item.recur .rm{flex:0 1 130px}
+.item.recur .ra{flex:0 0 auto; width:96px; text-align:right}
+.item.recur .rc,.item.recur .rs{flex:0 0 auto; width:112px}
+.item.recur .rmo{flex:0 0 auto; width:140px}
+.item.recur .til{color:var(--text-3); font-size:13px}
+/* 안 들어온 반복 결제 알림 */
+.miss{display:flex; flex-direction:column; gap:8px; margin-top:10px}
+.miss form{gap:10px}
+.miss .mt{font-weight:600}
 .accs{display:flex; gap:7px; flex-wrap:wrap; margin-top:6px}
 .accs .tag{font-size:14px; padding:4px 12px; font-variant-numeric:tabular-nums}
 .accs .tag b{font-weight:600; color:var(--text); margin-left:2px}

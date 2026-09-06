@@ -8,7 +8,9 @@ import {
   todayKST, skipReason, generateReport, filenameFor,
 } from './lib/reports.js'
 import { weekStart } from './lib/report/format.js'
-import { monthOr, monthOf, monthStart, shiftMonth, koreanMonth, summarize } from './lib/cards.js'
+import {
+  monthOr, monthOf, monthStart, shiftMonth, koreanMonth, summarize, missingRecurring,
+} from './lib/cards.js'
 import { voucherSheets, voucherFilename, voucherDocument, voucherFile } from './lib/voucher.js'
 import { STAGE_KEY } from './lib/series.js'
 import { loginPage, FAVICON } from './views/layout.js'
@@ -524,12 +526,13 @@ function dayInMonth(month, today) {
 app.get('/cards', async (c) => {
   const today = todayKST()
   const month = monthOr(c.req.query('month'), monthOf(today))
-  const [rows, accounts, users, settles, presets] = await Promise.all([
+  const [rows, accounts, users, settles, presets, recurring] = await Promise.all([
     db.listExpenses(c.env.DB, month),
     db.listCardAccounts(c.env.DB),
     db.listCardUsers(c.env.DB),
     db.listCardSettles(c.env.DB),
     db.listCardPresets(c.env.DB),
+    db.listRecurring(c.env.DB),
   ])
   return html(c, cardsPage({
     month,
@@ -538,7 +541,8 @@ app.get('/cards', async (c) => {
     next: shiftMonth(month, 1),
     rows,
     summary: summarize(rows, settles.filter((s) => s.done).map((s) => s.name)),
-    accounts, users, settles, presets,
+    accounts, users, settles, presets, recurring,
+    missing: missingRecurring(month, recurring, rows),
     defaultDay: dayInMonth(month, today),
   }))
 })
@@ -582,6 +586,62 @@ app.post('/api/cards/delete', async (c) => {
   if (!b.id) return c.json({ ok: false }, 400)
   await db.deleteExpense(c.env.DB, b.id)
   return c.json({ ok: true })
+})
+
+/* 반복 결제 — 달마다 빠짐없이 나가야 하는 지출 */
+
+app.post('/cards/recurring', async (c) => {
+  const form = await c.req.formData()
+  // 체크 안 한 상자는 아예 오지 않는다. 온 것만 '씀'으로 본다.
+  const on = new Set(form.getAll('on').map(String))
+  const rows = form.getAll('id').map((id) => ({
+    id,
+    title: form.get(`t_${id}`),
+    merchant: form.get(`m_${id}`),
+    amount: String(form.get(`a_${id}`) || '').replace(/[^0-9]/g, ''),
+    account: form.get(`c_${id}`),
+    spender: form.get(`s_${id}`),
+    from_month: form.get(`f_${id}`),
+    to_month: form.get(`e_${id}`),
+    enabled: on.has(String(id)),
+  }))
+  const { changed } = await db.saveRecurring(c.env.DB, rows)
+  return back(c, '/cards', `반복 결제 ${changed}건을 저장했습니다.`)
+})
+
+app.post('/cards/recurring/new', async (c) => {
+  const form = await c.req.formData()
+  const { error, title } = await db.addRecurring(c.env.DB, {
+    title: form.get('title'),
+    merchant: form.get('merchant'),
+    amount: String(form.get('amount') || '').replace(/[^0-9]/g, ''),
+  })
+  return back(c, '/cards', error || `"${title}"을(를) 더했습니다.`)
+})
+
+app.post('/cards/recurring/delete', async (c) => {
+  const form = await c.req.formData()
+  const id = String(form.get('remove') || '')
+  if (id) await db.deleteRecurring(c.env.DB, id)
+  return back(c, '/cards', '반복 결제에서 뺐습니다.')
+})
+
+/** 안 들어온 반복 결제를 그 달의 사용 내역으로 넣는다. */
+app.post('/cards/recurring/add', async (c) => {
+  const form = await c.req.formData()
+  const month = monthOr(form.get('month'), monthOf(todayKST()))
+  const all = await db.listRecurring(c.env.DB)
+  const r = all.find((x) => x.id === String(form.get('id') || ''))
+  if (!r) return back(c, `/cards?month=${month}`, '반복 결제를 찾지 못했습니다.')
+  await db.createExpense(c.env.DB, {
+    // 자동결제는 며칠에 빠져나갔는지 명세서를 봐야 안다. 일단 그 달 안의
+    // 날짜로 넣어 두고, 정확한 날은 표에서 고치면 된다.
+    used_on: dayInMonth(month, todayKST()),
+    title: r.title, merchant: r.merchant, amount: r.amount,
+    account: r.account, spender: r.spender,
+    settle: '자동결제 승인', note: '',
+  })
+  return back(c, `/cards?month=${month}`, `"${r.title}"을(를) 넣었습니다. 날짜와 금액을 확인하세요.`)
 })
 
 /* 항목 관리 — 처리 계정·사용자·정산상태 */

@@ -68,3 +68,40 @@ export function summarize(rows, doneNames = []) {
     byAccount,
   }
 }
+
+/* ── 반복 결제 ─────────────────────────────────────────── */
+
+/**
+ * 그 달에 이 반복 결제를 받는가.
+ *
+ * from/to는 비워 두면 끝이 없다는 뜻이다. 셔터스톡처럼 "7월~10월만 구독"인
+ * 것이 있어 기간을 함께 담는다.
+ */
+export function inMonthRange(month, from, to) {
+  if (from && month < from) return false
+  if (to && month > to) return false
+  return true
+}
+
+/**
+ * 그 달에 빠진 반복 결제.
+ *
+ * 사용처(가맹점)가 같은 지출이 그 달에 하나라도 있으면 들어온 것으로 본다.
+ * 세부 내역은 달마다 글이 조금씩 달라지지만("6월 요금", "7월 요금") 가맹점은
+ * 그대로이기 때문이다.
+ *
+ * 자동결제는 영수증이 눈에 띄지 않아 조용히 빠진다. 노션에서 옮겨 온 21건에서도
+ * 셔터스톡·Notion이 6월 뒤로 끊겨 있었다.
+ */
+export function missingRecurring(month, recurring, rows) {
+  const paid = new Set(
+    (rows || [])
+      .filter((r) => monthOf(r.used_on) === month)
+      .map((r) => String(r.merchant || '').trim())
+      .filter(Boolean)
+  )
+  return (recurring || [])
+    .filter((r) => r.enabled !== 0 && r.enabled !== false)
+    .filter((r) => inMonthRange(month, r.from_month, r.to_month))
+    .filter((r) => !paid.has(String(r.merchant || '').trim()))
+}

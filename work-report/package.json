@@ -36,7 +36,11 @@
     "db:stages-seed": "wrangler d1 execute work-report --remote --file=./migrations/0014_stage_presets_seed.sql",
     "db:stages-seed:local": "wrangler d1 execute work-report --local --file=./migrations/0014_stage_presets_seed.sql",
     "db:stages-move": "wrangler d1 execute work-report --remote --file=./migrations/0015_series_stages_move.sql",
-    "db:stages-move:local": "wrangler d1 execute work-report --local --file=./migrations/0015_series_stages_move.sql"
+    "db:stages-move:local": "wrangler d1 execute work-report --local --file=./migrations/0015_series_stages_move.sql",
+    "db:recurring": "wrangler d1 execute work-report --remote --file=./migrations/0016_card_recurring.sql",
+    "db:recurring:local": "wrangler d1 execute work-report --local --file=./migrations/0016_card_recurring.sql",
+    "db:recurring-seed": "wrangler d1 execute work-report --remote --file=./migrations/0017_card_recurring_seed.sql",
+    "db:recurring-seed:local": "wrangler d1 execute work-report --local --file=./migrations/0017_card_recurring_seed.sql"
   },
   "dependencies": {
     "hono": "^4.6.0"

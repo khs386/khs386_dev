@@ -864,3 +864,49 @@ export async function moveCardItem(db, kind, name, dir) {
     db.prepare(`update ${t.table} set sort_order = ? where name = ?`).bind(row.sort_order, neighbour.name),
   ])
 }
+
+/* 반복 결제 — 달마다 빠짐없이 나가야 하는 지출 */
+
+export const listRecurring = (db) =>
+  db.prepare('select * from card_recurring order by sort_order, title').all()
+    .then((r) => (r.results || []).map((x) => ({ ...x, enabled: !!x.enabled })))
+
+export async function addRecurring(db, f) {
+  const title = String(f.title || '').trim()
+  const merchant = String(f.merchant || '').trim()
+  if (!title) return { error: '이름을 입력해 주세요.' }
+  if (!merchant) return { error: '사용처를 입력해 주세요. 이 이름으로 결제가 들어왔는지 가립니다.' }
+  const last = await db.prepare('select max(sort_order) as m from card_recurring').first()
+  await db
+    .prepare(
+      `insert into card_recurring
+         (id, title, merchant, amount, account, spender, from_month, to_month, sort_order)
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .bind(uuid(), title, merchant, Number(f.amount) || 0, str(f.account), str(f.spender),
+          str(f.from_month), str(f.to_month), (last?.m || 0) + 1)
+    .run()
+  return { ok: true, title }
+}
+
+/** 줄마다 한꺼번에 저장한다. 화면에 그려진 것만 오므로 지운 줄은 되살아나지 않는다. */
+export async function saveRecurring(db, rows) {
+  if (!rows.length) return { ok: true, changed: 0 }
+  await db.batch(
+    rows.map((r) =>
+      db
+        .prepare(
+          `update card_recurring set title = ?, merchant = ?, amount = ?, account = ?,
+                  spender = ?, from_month = ?, to_month = ?, enabled = ? where id = ?`
+        )
+        .bind(String(r.title || '').trim(), String(r.merchant || '').trim(),
+              Number(r.amount) || 0, str(r.account), str(r.spender),
+              str(r.from_month), str(r.to_month), bool(r.enabled), r.id)
+    )
+  )
+  return { ok: true, changed: rows.length }
+}
+
+export async function deleteRecurring(db, id) {
+  await db.prepare('delete from card_recurring where id = ?').bind(id).run()
+}

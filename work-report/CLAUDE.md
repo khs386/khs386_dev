@@ -29,7 +29,7 @@ master가 아니라 여기에 커밋합니다. 고친 것은 그때그때 커밋
    대조하는 골든 테스트가 있습니다. 사용자가 보고서 모양을 바꿔 달라고 하지 않는 한
    `src/lib/report/`는 손대지 마세요. 바꿔야 한다면 먼저 알리고, 골든 파일을 다시
    만든 뒤 `npm test`로 확인하세요.
-2. **모든 변경 뒤 `npm test`.** 하나도 빠짐없이 통과해야 합니다 (지금 44개).
+2. **모든 변경 뒤 `npm test`.** 하나도 빠짐없이 통과해야 합니다 (지금 50개).
 3. **비밀은 코드에도 git에도 넣지 않습니다.** `APP_PASSWORD`, `SESSION_SECRET`,
    `BRIEF_TOKEN`, 구글 드라이브 열쇠는 `wrangler secret put`으로만 넣습니다.
    `.dev.vars`와 `.wrangler/`는 gitignore 되어 있습니다. 열쇠 값을 화면이나 파일에
