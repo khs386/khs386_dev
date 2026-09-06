@@ -694,7 +694,7 @@ ${
 
 <div class="card">
   <div class="chead"><h2>생성 이력</h2>
-    <span class="count">${total}건 중 ${history.length}건</span></div>
+    <span class="count">${total}건 중 ${history.length}건<span data-rshown></span></span></div>
   ${
     history.length
       ? `<div class="filters row">
@@ -730,6 +730,7 @@ ${
   if (!q || !k) return
   var rows = [].slice.call(document.querySelectorAll('[data-rrow]'))
   var none = document.querySelector('[data-rnone]')
+  var shown = document.querySelector('[data-rshown]')
   function run() {
     var t = q.value.trim().toLowerCase(), kk = k.value, n = 0
     rows.forEach(function (r) {
@@ -739,6 +740,7 @@ ${
       if (ok) n++
     })
     if (none) none.hidden = n > 0
+    if (shown) shown.textContent = n === rows.length ? '' : ' · ' + n + '건 보임'
   }
   q.addEventListener('input', run)
   k.addEventListener('change', run)

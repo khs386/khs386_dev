@@ -59,6 +59,9 @@ const CSS = `
 }}
 
 *{box-sizing:border-box}
+/* 브라우저 기본 [hidden]은 작성자 규칙에 진다. .item{display:flex} 같은 것이 있으면
+   숨겨도 그대로 보인다. 거르개가 조용히 먹통이 되므로 여기서 못 박는다. */
+[hidden]{display:none !important}
 html{-webkit-text-size-adjust:100%}
 body{
   margin:0; background:var(--bg); color:var(--text);
