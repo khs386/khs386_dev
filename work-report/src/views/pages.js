@@ -517,7 +517,14 @@ ${SHEET_JS}`
 
 /* ── 개발현황 ─────────────────────────────────────────────── */
 
-export function seriesPage({ series, palette, presets }) {
+/**
+ * 개발현황.
+ *
+ * open은 어느 패널을 펼친 채로 그릴지다. 단계를 더하거나 지우면 폼을 보내고 화면을
+ * 처음부터 다시 그리는데, <details>는 기본이 닫힘이라 손보던 자리가 접혀 버린다.
+ * 되돌아올 때 그 시리즈 이름(기본 목록은 '_p')을 실어 보내 같은 자리를 다시 연다.
+ */
+export function seriesPage({ series, palette, presets, open }) {
   const colorSelect = (name, value) =>
     `<select name="color" style="width:104px" aria-label="${esc(name)} 색">` +
     palette
@@ -599,7 +606,7 @@ ${
         ? `<div class="grid">${valueInputs(s)}</div>`
         : '<p class="empty">단계가 없습니다. 아래에서 추가하거나 기본값을 불러오세요.</p>'
     }
-    <details class="shhelp spanel">
+    <details class="shhelp spanel"${open === s.name ? ' open' : ''}>
       <summary>단계와 가중치 <span class="count">${s.stages.length}단계</span></summary>
       <div class="mbox">
         <p class="mlead">이 시리즈의 단계 목록입니다. 더하고 빼고 이름을 고쳐도
@@ -652,7 +659,7 @@ ${
   </form>
 </div>
 
-<details class="shhelp mgr">
+<details class="shhelp mgr"${open === '_p' ? ' open' : ''}>
   <summary>기본 단계 목록</summary>
   <div class="mbox">
     <form method="post" action="/series/preset">
