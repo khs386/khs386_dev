@@ -21,6 +21,7 @@ const notice = (msg, kind) =>
 
 export function todayPage({ today, logs, weekly, series, soon, brief }) {
   const stale = series.filter((s) => !s.updated_at)
+  const plan = weekly.planItems || []
   // 주간 항목이 아예 없을 때와, 지난주 것만 있고 이번 주가 빈 때는 말이 다르다.
   const weekNote =
     weekly.prev + weekly.plan === 0
@@ -59,9 +60,23 @@ ${briefCard(brief, today)}
 
 <div class="card">
   <!-- 채울 말이 없으면 제목 줄 아래 여백까지 지운다. 빈 자리만 남기지 않는다. -->
-  <div class="chead"${weekNote ? '' : ' style="margin-bottom:0"'}><h2>이번 주 현황</h2>
+  <div class="chead"${weekNote || plan.length ? '' : ' style="margin-bottom:0"'}>
+    <h2>이번 주 현황</h2>
     <span class="count">전주 실적 ${weekly.prev}건 · 금주 예정 ${weekly.plan}건</span></div>
   ${weekNote}
+  ${
+    // 금주 예정만 늘어놓는다. 마감이 가까운 업무와 같은 모양이라 눈이 익다.
+    plan.map((w) => {
+      const d = dday(w.due_date, today)
+      return `<div class="item cols due">
+        <span class="t">${esc(w.title)}</span>
+        <span class="c">${w.due_date ? tag(w.due_date) : ''}</span>
+        <span class="c">${
+          d === null ? '' : `<span class="pill" style="background:${ddayTint(d)}">D-${d}</span>`
+        }</span>
+      </div>`
+    }).join('')
+  }
 </div>
 
 <div class="card">

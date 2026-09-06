@@ -90,6 +90,9 @@ app.get('/', async (c) => {
     weekly: {
       prev: weekly.filter((w) => w.kind === '전주 실적').length,
       plan: weekly.filter((w) => w.kind === '금주 예정').length,
+      // 아침에 훑는 화면이라 앞으로 할 일만 싣는다. 전주 실적은 주간 보고서를
+      // 만들 때 /weekly에서 본다.
+      planItems: weekly.filter((w) => w.kind === '금주 예정'),
     },
   }))
 })
