@@ -1081,8 +1081,7 @@ export function cardsPage({ month, monthLabel, prev, next, rows, summary,
 ${
   missing.length
     ? `<div class="note warn">
-  <b>${monthLabel}에 아직 안 들어온 반복 결제가 ${missing.length}건 있습니다.</b>
-  자동결제는 영수증이 눈에 띄지 않아 조용히 빠집니다.
+  <b>아직 입력되지 않은 반복 결제가 ${missing.length}건 있습니다.</b>
   <div class="miss">${missing.map((m) => `
     <form method="post" action="/cards/recurring/add" class="row">
       <input type="hidden" name="id" value="${esc(m.id)}">
