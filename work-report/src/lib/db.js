@@ -725,17 +725,20 @@ export const listBriefs = (db, limit = 30) =>
 /* ── 법인카드 ──────────────────────────────────────────── */
 
 /**
- * 한 달치 사용 내역. 최근에 쓴 것이 위로 온다.
+ * 한 달치 사용 내역. 먼저 쓴 것이 위로 온다.
  *
- * 같은 날 여러 건이면 나중에 넣은 것을 아래에 둔다. 카드 명세서를 위에서부터
- * 옮겨 적는 순서 그대로 쌓이게 하려는 것이다.
+ * 카드 명세서와 지출결의서가 모두 오래된 날부터 내려가므로, 화면도 같은 차례로
+ * 두어야 위에서부터 나란히 짚어 볼 수 있다.
+ *
+ * 같은 날 여러 건이면 나중에 넣은 것을 아래에 둔다. 명세서를 위에서부터 옮겨
+ * 적는 순서 그대로 쌓이게 하려는 것이다.
  */
 export async function listExpenses(db, month) {
   const { results } = await db
     .prepare(
       `select * from card_expenses
         where used_on >= ? and used_on <= ?
-        order by used_on desc, created_at`
+        order by used_on, created_at`
     )
     .bind(`${month}-01`, `${month}-31`)
     .all()

@@ -1039,7 +1039,9 @@ export function cardsPage({ month, monthLabel, prev, next, rows, summary,
     tints,
     presets,
     grids: [{
-      id: 'cards', api: '/api/cards', kind: '', move: false, sum: 'amount',
+      // sort: 사용일이 바뀌거나 줄이 늘면 표가 그 자리에서 날짜순으로 다시 선다.
+      // 손으로 줄을 옮기는 표(일일·주간)와 달리 여기서는 차례가 곧 날짜다.
+      id: 'cards', api: '/api/cards', kind: '', move: false, sort: 'used_on', sum: 'amount',
       needs: [['title', '세부 내역'], ['amount', '금액']],
       cols: ['cpick', 'cday', 'ctitle', 'cuser', 'cshop', 'cwon', 'cacc', 'csettle', 'cnote'],
       rows: rows.map(cardRow),

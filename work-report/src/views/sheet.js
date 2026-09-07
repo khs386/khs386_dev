@@ -431,6 +431,7 @@ function addFromFields (box, id) {
     return
   }
   g.rows.push(row)
+  resort(id, null)
   draw(id)
   save(id, row)
   // 이어서 한 건 더 넣는 일이 잦다. 되풀이되는 칸은 남기고 그때그때 달라지는
@@ -708,6 +709,39 @@ function blank (g) {
   g.cols.forEach(function (c) { o[c.k] = c.t === 'check' ? false : '' })
   return o
 }
+/**
+ * 표를 날짜순으로 다시 세운다. g.sort가 있는 표에서만 움직인다.
+ *
+ * 줄을 새로 꽂거나 사용일을 고치면 그 줄만 엉뚱한 자리에 남는다. 새로 고쳐야
+ * 제자리를 찾는 것은, 명세서를 위에서부터 옮겨 적는 동안 어디까지 넣었는지
+ * 눈으로 좇을 수 없게 만든다.
+ *
+ * 날짜가 같으면 원래 차례를 지킨다. 같은 날 여러 건은 명세서에 적힌 순서대로
+ * 쌓여 있어야 하나씩 짚어 볼 수 있다.
+ *
+ * 아직 날짜가 없는 줄은 맨 아래에 둔다. 빈 값이 위로 올라오면 채우기도 전에
+ * 적어 둔 줄들을 밀어내려, 어디를 적던 중이었는지 놓친다.
+ *
+ * keep에 준 줄은 자리가 바뀌어도 계속 골라 둔다. 테두리만 제자리에 남으면
+ * 그 다음 화살표 한 번에 엉뚱한 줄을 고치게 된다.
+ */
+function resort (id, keep) {
+  var g = G[id]
+  if (!g.sort) return
+  var was = g.rows.slice()
+  g.rows.sort(function (a, b) {
+    var x = String(a[g.sort] == null ? '' : a[g.sort])
+    var y = String(b[g.sort] == null ? '' : b[g.sort])
+    if (!x !== !y) return x ? -1 : 1
+    if (x !== y) return x < y ? -1 : 1
+    return was.indexOf(a) - was.indexOf(b)
+  })
+  if (keep && sel && sel.id === id) {
+    var at = g.rows.indexOf(keep)
+    if (at >= 0) sel.r = at
+  }
+}
+
 function put (id, r, c, val) {
   var g = G[id], col = g.cols[c]
   var isNew = r >= g.rows.length
@@ -748,6 +782,7 @@ function put (id, r, c, val) {
   }
   // 고르는 칸은 화면에만 있는 값이다. 판 번호도 올리지 않고 보내지도 않는다.
   if (col.nosave) { draw(id); paint(); return }
+  if (col.k === g.sort) resort(id, row)
   row._v = (row._v || 0) + 1
   draw(id); paint(); save(id, row)
 }
